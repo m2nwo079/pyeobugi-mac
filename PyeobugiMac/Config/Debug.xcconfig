@@ -1,0 +1,6 @@
+// Debug build settings
+// "//" starts a comment in xcconfig, so the URL uses $() to keep the slashes
+API_BASE_URL = http:/$()/localhost:8080/api
+
+// Optional per-developer overrides (gitignored)
+#include? "Debug.local.xcconfig"
