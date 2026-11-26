@@ -1,0 +1,2 @@
+// Release build settings
+API_BASE_URL = https:/$()/pyeobugi-server-production.up.railway.app/api
