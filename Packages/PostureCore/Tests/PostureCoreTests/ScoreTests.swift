@@ -17,12 +17,10 @@ private func sizeContribution(atPitch pitch: Double) -> Double {
 }
 
 @Suite struct PostureScoreTests {
-    // Ported from pyeobugi-AI engine.test.ts
     @Test func isZeroAtBaseline() {
         #expect(score(0) == 0)
     }
 
-    // Ported from pyeobugi-AI engine.test.ts
     @Test func ignoresLargerFaceWhenNotPitchedDown() {
         #expect(score(3, 0.5) == score(3))
     }
@@ -66,7 +64,6 @@ private func sizeContribution(atPitch pitch: Double) -> Double {
 }
 
 @Suite struct SeverityTests {
-    // Ported from pyeobugi-AI engine.test.ts
     @Test func mapsScoresToBands() {
         #expect([severity(of: 3), severity(of: 10), severity(of: 18)] == [.mild, .moderate, .severe])
     }
