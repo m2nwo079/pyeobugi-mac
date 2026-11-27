@@ -199,15 +199,15 @@ enum TurtleKeyframes {
         .init(offset: 0.75, values: [-6, 0], curve: .waddleUp),
         .init(offset: 1, values: [0, -2], curve: .linear),
     ])
-    // Leg angle (degrees), lift (pt)
+    // Leg angle (degrees), lift (drawing units)
     static let step = Keyframes([(0, [-11, 0]), (0.25, [0, -7]), (0.5, [11, 0]), (0.75, [0, 0]), (1, [-11, 0])], curve: .easeInOutCurve)
     // Tail angle (degrees)
     static let wag = Keyframes([(0, [-8]), (1, [8])], curve: .easeInOutCurve)
-    // Head angle (degrees), lift (pt)
+    // Head angle (degrees), lift (drawing units)
     static let nod = Keyframes([(0, [-1.5, 0]), (1, [1.5, -3])], curve: .easeInOutCurve)
     // Eye height
     static let blink = Keyframes([(0, [1]), (0.46, [1]), (0.475, [0.08]), (0.49, [1]), (1, [1])], curve: .easeCurve)
-    // Head angle (degrees), sideways shift (pt)
+    // Head angle (degrees), sideways shift (drawing units)
     static let shake = Keyframes([
         (0, [0, 0]), (0.1, [-10, -7]), (0.24, [10, 7]), (0.38, [-8, -5]),
         (0.52, [6, 4]), (0.66, [-3.5, -2]), (0.8, [1.5, 1]), (1, [0, 0]),
@@ -239,25 +239,24 @@ struct LegPose {
     var lift = 0.0
 }
 
-// Neck pieces in drawing units of the side view
-struct NeckTube {
+// Neck pieces in long view coordinates
+struct NeckTube: Equatable {
     var x: Double
     var top: Double
     var bottom: Double
-    var widthScale: Double
 }
 
-struct NeckHead {
-    var x: Double
-    var attach: Double
-    var morph: Double
-}
-
-struct NeckLayout {
+struct NeckLayout: Equatable {
+    // Below one full extension the resting neck curve is pulled down by `drop` and the head moves with it
+    var extended = false
+    var drop = 0.0
+    // Head shape from resting (0) to stretched (1)
+    var morph = 1.0
     var front: [NeckTube] = []
     var back: [NeckTube] = []
-    var frontHeads: [NeckHead] = []
-    var backHeads: [NeckHead] = []
+    // Offsets of each head from where it sits at one full extension
+    var frontHeads: [CGPoint] = []
+    var backHeads: [CGPoint] = []
 }
 
 // Everything the view needs for one frame. Offsets are in points unless noted
@@ -352,7 +351,7 @@ final class TurtleModel {
     private var neckExit: NeckExit?
     private var columns: Columns?
 
-    @ObservationIgnored private let blinkOrigin: TimeInterval
+    @ObservationIgnored let blinkOrigin: TimeInterval
     @ObservationIgnored private var phase = Phase.normal
     @ObservationIgnored private var longRequested = false
     @ObservationIgnored private var unlongRequested = false
@@ -654,24 +653,25 @@ final class TurtleModel {
         return neckExit.from * (1 - eased)
     }
 
-    // Screen edges in drawing units of the side view, and the columns the neck climbs after leaving the top
+    // Screen edges in long view coordinates, and the columns the neck climbs after leaving the top
     private func makeColumns() -> Columns {
         let k = Double(size) / TurtleArt.units
         let s: Double = heading.isFlipped ? -1 : 1
         let centre = TurtleArt.units / 2
         let edgeA = centre + (0 - Double(x)) * s / k
         let edgeB = centre + (Double(screen.width) - Double(x)) * s / k
-        let left = min(edgeA, edgeB), width = Double(screen.width) / k
-        let top = TurtleArt.foot - Double(ground) / k
-        let bottom = TurtleArt.foot + (Double(screen.height) - Double(ground)) / k
+        let left = min(edgeA, edgeB) - TurtleArt.longOffset.width, width = Double(screen.width) / k
+        let top = TurtleArt.foot - Double(ground) / k - TurtleArt.longOffset.height
+        let bottom = TurtleArt.foot + (Double(screen.height) - Double(ground)) / k - TurtleArt.longOffset.height
 
-        let span = TurtleArt.faceReach + TurtleArt.backReach + NeckStretch.columnMargin
+        let root = TurtleArt.neckCentre
+        let faceReach = root - TurtleArt.faceEdge
+        let span = faceReach + (NeckArt.right + TurtleArt.backEdge - root) + NeckStretch.columnMargin
         let tight = max(2, (width / (span + NeckStretch.tightGap)).rounded(.down))
         let gap = (width / tight - span) * NeckStretch.gapGrowth
         let count = max(2, Int(width / (span + gap)))
         let pitch = width / Double(count)
-        let offset = TurtleArt.faceReach + (pitch - span) / 2
-        let root = TurtleArt.neckX
+        let offset = faceReach + (pitch - span) / 2
         let clearance = max(pitch * NeckStretch.rootClearance, span)
         let cells: [Double] = (0..<count).map { left + Double($0) * pitch + offset }
         let free = cells.filter { abs($0 - root) >= clearance }
@@ -685,37 +685,49 @@ final class TurtleModel {
 
     private func neckLayout(_ length: Double) -> NeckLayout {
         var layout = NeckLayout()
-        let root = TurtleArt.neckX
-        let extended = length >= NeckStretch.full
-        let widthScale = extended ? 1 : NeckStretch.restWidth + (1 - NeckStretch.restWidth) * length / NeckStretch.full
-        let p = min(1, max(0, (length - NeckStretch.morphStart) / NeckStretch.morphSpan))
-        let morph = extended ? 1 : p * p * (3 - 2 * p)
-        let attach = TurtleArt.headAttach - length
-
-        guard let columns, attach < columns.top else {
-            layout.front = [NeckTube(x: root, top: attach, bottom: TurtleArt.neckBase, widthScale: widthScale)]
-            layout.frontHeads = [NeckHead(x: root, attach: attach, morph: morph)]
-            if let columns, attach - TurtleArt.headHeight < columns.top {
-                layout.backHeads = [NeckHead(x: columns.x(1), attach: attach + columns.height, morph: morph)]
-            }
+        guard length >= NeckStretch.full, let columns else {
+            // The resting neck curve stretches up from the shell and the head changes shape on the way
+            let drop = NeckStretch.full - length
+            let p = min(1, max(0, (length - NeckStretch.morphStart) / NeckStretch.morphSpan))
+            layout.drop = drop
+            layout.morph = p * p * (3 - 2 * p)
+            layout.frontHeads = [CGPoint(x: 0, y: drop)]
             return layout
         }
 
-        // Past the top edge the neck comes back up from the bottom of the next column
-        let past = columns.top - attach
-        let column = 1 + Int(past / columns.height)
-        let head = columns.bottom - (past - Double(column - 1) * columns.height)
+        layout.extended = true
+        let root = TurtleArt.neckCentre, base = NeckArt.columnTop
+        let past = length - NeckStretch.full
+        let first = base - columns.top
         let top = columns.top - NeckStretch.overshoot, bottom = columns.bottom + NeckStretch.overshoot
-        layout.front = [NeckTube(x: root, top: top, bottom: TurtleArt.neckBase, widthScale: 1)]
-        // Columns passed again keep the earlier tube underneath
-        for j in max(1, column - columns.order.count)..<column {
-            layout.back.append(NeckTube(x: columns.x(j), top: top, bottom: bottom, widthScale: 1))
+        // Past the top edge the neck comes back up from the bottom of the next column
+        let column: Int, head: Double
+        if past <= first {
+            column = 0
+            head = base - past
+        } else {
+            let t = past - first
+            column = 1 + Int(t / columns.height)
+            head = columns.bottom - (t - Double(column - 1) * columns.height)
         }
-        layout.back.append(NeckTube(x: columns.x(column), top: head, bottom: bottom, widthScale: 1))
-        layout.backHeads = [NeckHead(x: columns.x(column), attach: head, morph: 1)]
+        layout.front = [NeckTube(x: root, top: column == 0 ? head : top, bottom: base)]
+        // Columns passed again keep the earlier tube underneath
+        for j in max(1, column - columns.order.count)..<max(1, column) {
+            layout.back.append(NeckTube(x: columns.x(j), top: top, bottom: bottom))
+        }
+        if column >= 1 {
+            layout.back.append(NeckTube(x: columns.x(column), top: head, bottom: bottom))
+        }
+        let lift = head - base
+        let headPoint = CGPoint(x: column == 0 ? 0 : columns.x(column) - root, y: lift)
+        if column == 0 {
+            layout.frontHeads = [headPoint]
+        } else {
+            layout.backHeads = [headPoint]
+        }
         // The part of the head above the top edge shows at the bottom of the following column
-        if head - TurtleArt.headHeight < columns.top {
-            layout.backHeads.append(NeckHead(x: columns.x(column + 1), attach: head + columns.height, morph: 1))
+        if TurtleArt.headTop + lift < columns.top {
+            layout.backHeads.append(CGPoint(x: columns.x(column + 1) - root, y: lift + columns.height))
         }
         return layout
     }
@@ -732,16 +744,23 @@ final class TurtleModel {
         return Int((elapsed / period).rounded(.down)) % 2 == 0 ? p : 1 - p
     }
 
+    // Until when something moves faster than breathing and the idle tail: walking, turning, squashing,
+    // shaking, eyelids and the neck pulling back. The neck spring redraws on every step by itself
+    var fullRateUntil: TimeInterval {
+        if walk != nil || shakeSince != nil || neckExit != nil { return .infinity }
+        var end = eyesClosingSince + TurtleEyes.lidTransition
+        if let hop { end = max(end, hop.start + hop.duration) }
+        return end
+    }
+
     func frame(at t: TimeInterval) -> TurtleFrame {
         let look = longView && heading.look == .side ? TurtleLook.long : heading.look
         var f = TurtleFrame(x: walk?.x(at: t) ?? x, y: ground, size: size, look: look, flipped: heading.isFlipped)
-        if look == .side || look == .long {
-            f.neck = neckLayout(longView ? neckLength(at: t) : 0)
+        if look == .long {
+            f.neck = neckLayout(neckLength(at: t))
         }
         guard !reduceMotion else { return f }
 
-        // Inner parts move in points; the drawing is scaled by k
-        let k = Double(size) / TurtleArt.units
         if let hop {
             let v = hop.frames.values(at: UnitCurve.easeInOutCurve.value(at: min(1, max(0, (t - hop.start) / hop.duration))))
             f.hopOffset = v[0]
@@ -754,7 +773,7 @@ final class TurtleModel {
             f.bobAngle = TurtleKeyframes.jiggle.values(at: p)[0]
             let head = TurtleKeyframes.shake.values(at: p)
             f.headAngle = head[0]
-            f.headShift = head[1] / k
+            f.headShift = head[1]
         } else if pose == .idle {
             let v = TurtleKeyframes.breathe.values(at: cycle(elapsed, TurtleMotion.breathePeriod))
             f.bobScale = CGSize(width: v[0], height: v[1])
@@ -764,11 +783,11 @@ final class TurtleModel {
             f.bobAngle = bob[1]
             let front = TurtleKeyframes.step.values(at: cycle(elapsed, TurtleMotion.waddlePeriod))
             let back = TurtleKeyframes.step.values(at: cycle(elapsed + TurtleMotion.legPhase, TurtleMotion.waddlePeriod))
-            f.frontLeg = LegPose(angle: front[0], lift: front[1] / k)
-            f.backLeg = LegPose(angle: back[0], lift: back[1] / k)
+            f.frontLeg = LegPose(angle: front[0], lift: front[1])
+            f.backLeg = LegPose(angle: back[0], lift: back[1])
             let nod = TurtleKeyframes.nod.values(at: swing(elapsed, TurtleMotion.walkSwingPeriod))
             f.headAngle = nod[0]
-            f.headLift = nod[1] / k
+            f.headLift = nod[1]
         }
         f.tailAngle = pose == .walk
             ? TurtleKeyframes.wag.values(at: swing(elapsed, TurtleMotion.walkSwingPeriod))[0]

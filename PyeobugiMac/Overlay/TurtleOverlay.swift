@@ -1,7 +1,6 @@
 import AppKit
 import Observation
 import PostureCore
-import SwiftUI
 
 // Owns the overlay panel and feeds posture into the turtle's neck
 @Observable
@@ -20,6 +19,7 @@ final class TurtleOverlay {
     @ObservationIgnored private let monitor: PostureMonitor
     @ObservationIgnored private var panel: NSPanel?
     @ObservationIgnored private var model: TurtleModel?
+    @ObservationIgnored private var view: TurtleView?
     @ObservationIgnored private var updates: Task<Void, Never>?
     @ObservationIgnored private var candidateSince: TimeInterval?
 
@@ -64,15 +64,15 @@ final class TurtleOverlay {
         panel.isReleasedWhenClosed = false
 
         let model = TurtleModel(screen: screen.visibleFrame.size, reduceMotion: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion)
-        let host = NSHostingView(rootView: TurtleOverlayView(model: model))
-        // Keep the panel at the visible frame instead of the content's ideal size
-        host.sizingOptions = []
-        panel.contentView = host
+        let view = TurtleView(model: model)
+        panel.contentView = view
         panel.orderFrontRegardless()
 
         self.panel = panel
         self.model = model
+        self.view = view
         model.start()
+        view.start()
         updates = Task { [weak self] in
             while !Task.isCancelled {
                 self?.update()
@@ -86,6 +86,8 @@ final class TurtleOverlay {
         updates = nil
         model?.stop()
         model = nil
+        view?.stop()
+        view = nil
         panel?.close()
         panel = nil
         candidateSince = nil
@@ -108,18 +110,5 @@ final class TurtleOverlay {
             candidateSince = nil
         }
         model?.setNeck(neckLength(candidateSince: candidateSince, at: now))
-    }
-}
-
-struct TurtleOverlayView: View {
-    let model: TurtleModel
-
-    var body: some View {
-        TimelineView(.animation(paused: model.reduceMotion)) { context in
-            let frame = model.frame(at: context.date.timeIntervalSinceReferenceDate)
-            TurtleFigure(frame: frame)
-                .offset(x: frame.x - frame.size / 2, y: frame.y - frame.size * TurtleSize.footLine)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 }
