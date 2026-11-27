@@ -11,6 +11,7 @@
 3. **`PostureCore` 이식**: score → engine → calibration → distance → feedback 순, 테스트와 함께
 4. **최소 앱**: 카메라 + Vision + 엔진 연결, 메뉴 막대에 상태만 표시
 5. **온보딩**: 카메라 권한, 기준 잡기, 기준값 저장
+   - 기준 잡기 중 카메라 미리보기 표시
 6. **거북이 오버레이**
 7. **`PyeobugiAPI`**: 기기 등록, 이벤트 큐, 전송 (로컬 서버로 확인)
 8. **리포트 화면**: `GET /api/reports/summary`, Swift Charts
