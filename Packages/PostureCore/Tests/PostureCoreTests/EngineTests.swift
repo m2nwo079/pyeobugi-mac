@@ -162,3 +162,24 @@ private func badEnters(_ transitions: [Transition]) -> [Transition] {
         #expect(run([Sample(at: 4.25, face: good)], from: reset).state.pitch == 0)
     }
 }
+
+@Suite struct DetectionScheduleTests {
+    @Test func calibrationSamplesFastEvenWithDetectionOff() {
+        #expect(nextDetection(.initial, at: 100, detecting: false, calibrating: true) == 100.25)
+        #expect(nextDetection(.initial, at: 100, detecting: true, calibrating: true) == 100.25)
+    }
+
+    @Test func gateStaysClosedWithNeitherDetectionNorCalibration() {
+        #expect(nextDetection(.initial, at: 100, detecting: false, calibrating: false) == nil)
+    }
+
+    @Test func detectionUsesTheAdaptiveInterval() {
+        #expect(nextDetection(.initial, at: 100, detecting: true, calibrating: false) == 101)
+    }
+
+    @Test func smoothingTakesACustomTimeConstant() {
+        // After one time constant the value has moved 1 - 1/e of the way
+        let moved = smoothSignal(0, 1, elapsed: 0.15, timeConstant: 0.15)
+        #expect(abs(moved - (1 - exp(-1))) < 1e-12)
+    }
+}

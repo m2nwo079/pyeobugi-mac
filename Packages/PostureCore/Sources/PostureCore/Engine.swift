@@ -63,9 +63,10 @@ public enum Timing {
     public static let smoothingTime: TimeInterval = 1
 }
 
-public func smoothSignal(_ previous: Double?, _ value: Double, elapsed: TimeInterval) -> Double {
+public func smoothSignal(_ previous: Double?, _ value: Double, elapsed: TimeInterval,
+                         timeConstant: TimeInterval = Timing.smoothingTime) -> Double {
     guard let previous else { return value }
-    let alpha = -expm1(-max(0, elapsed) / Timing.smoothingTime)
+    let alpha = -expm1(-max(0, elapsed) / timeConstant)
     return previous + alpha * (value - previous)
 }
 
@@ -158,4 +159,12 @@ public func nextInterval(_ state: EngineState, now: TimeInterval) -> TimeInterva
         return Timing.awayInterval
     }
     return Timing.idleInterval
+}
+
+// When the next frame should go to Vision; nil keeps the gate closed
+public func nextDetection(_ state: EngineState, at now: TimeInterval, detecting: Bool, calibrating: Bool) -> TimeInterval? {
+    // Calibration needs at least six valid samples in five seconds, which the idle 1 Hz rate cannot guarantee,
+    // so it samples at the fast rate whether or not detection is on
+    if calibrating { return now + Timing.pendingInterval }
+    return detecting ? now + nextInterval(state, now: now) : nil
 }

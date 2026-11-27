@@ -48,8 +48,8 @@ score    = total < 4 ? 0 : total - 4
 | 파일 | 내용 |
 | --- | --- |
 | `Score.swift` | 점수, 진입·회복 기준(3/2 히스테리시스), 심각도 |
-| `Engine.swift` | 상태 기계, 시간 상수, EMA 평활(1초 시상수), 적응형 감지 주기 |
-| `Calibration.swift` | 기준 잡기 (여러 샘플로 안정성 평가) |
+| `Engine.swift` | 상태 기계, 시간 상수, EMA 평활(1초 시상수), 적응형 감지 주기, 다음 감지 시각(`nextDetection`) |
+| `Calibration.swift` | 기준 잡기 (여러 샘플로 안정성 평가), 시도 단위 판정과 시간 제한(`CalibrationRun`) |
 | `Distance.swift` | 앉은 거리 변화 감지 |
 | `Feedback.swift` | 화면 단계 (`uncalibrated`, `unavailable`, `good`, `pendingBad`, `bad`, `recovering`). 초기 단계는 `unavailable` |
 | `Pet.swift` | 거북이 표시 상태(`away`, `bad`, `good`), 목 길이, 교정 강도 |
@@ -66,7 +66,8 @@ score    = total < 4 ? 0 : total - 4
 | 부재 시 간격 | 3초 (0.33Hz), 부재 60초 이후 적용 |
 | 평활 시상수 | 1초 |
 
-기준 잡기 중에는 최소 유효 샘플을 확보하기 위해 0.25초 간격으로 감지한다.
+기준 잡기 중에는 최소 유효 샘플을 확보하기 위해 0.25초 간격으로 감지한다. 감지가 꺼져 있어도 같다.
+다음 감지 시각은 `nextDetection`이 정한다: 기준 잡기 중이면 0.25초 뒤, 감지 중이면 적응형 간격 뒤, 둘 다 아니면 감지하지 않는다.
 
 코드의 시간 값은 모두 초 단위 `TimeInterval`이다 (`Engine.swift`의 `Timing`).
 
@@ -84,6 +85,15 @@ score    = total < 4 ? 0 : total - 4
 | 얼굴 크기 범위 상한 | 중앙값 대비 0.12 |
 
 기준값은 유효 샘플의 pitch 중앙값과 크기 중앙값이다.
+
+앱은 기준 잡기를 시작할 때마다 `CalibrationRun`을 하나 만든다.
+
+- 샘플이 들어올 때마다 `add`로 판정한다 (수집 중, 완료, 실패).
+- 샘플이 끊겨도 시도가 끝나도록, 마지막 샘플(없으면 시작 시각)에서 샘플 사이 최대 간격(1.6초)이 지난 시각을 `deadline`으로 둔다.
+  앱은 그 시각에 `evaluate(at:)`를 다시 부르고, 그사이 샘플이 없었으면 시간 제한 실패(`timedOut`)가 된다.
+- 실패에는 사유가 붙는다: `sampleGap`(샘플 간격 초과), `tooManyMissing`(누락·무효 초과), `moved`(pitch·크기 범위 초과),
+  `tooFewFaces`(유효 샘플 부족), `timedOut`(시간 제한). 사유는 진단 로그에만 쓴다.
+- 진행 중인 시도는 다시 시작하지 않는다. 카메라가 닫힐 때만 취소된다.
 
 ### 거리 변화 상수 (`Distance.swift`)
 
@@ -129,3 +139,4 @@ score    = total < 4 ? 0 : total - 4
 | 2026-11-26 | Calibration, Distance 최초 구현 | 명세 기준 |
 | 2026-11-26 | Feedback 최초 구현 | 명세 기준 |
 | 2026-11-27 | Pet 최초 구현 | 명세 기준 |
+| 2026-11-28 | 기준 잡기 시간 제한 판정 추가 | 샘플이 끊겨도 완료 또는 실패가 나오도록 |

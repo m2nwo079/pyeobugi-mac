@@ -25,10 +25,14 @@ pitch·얼굴 크기·기준값은 `PostureCore`와 앱 안에서만 쓰이고 `
 | 기능 | 구현 |
 | --- | --- |
 | 카메라 + 얼굴 감지 | AVFoundation + Vision |
+| 카메라 열기와 감지 분리 | `openCamera`는 카메라만 연다. 감지(`isDetecting`) 중이 아니면 엔진·피드백을 갱신하지 않고 기준 잡기 샘플만 모은다. 기준 잡기 창을 닫으면 감지 중이 아닐 때 카메라도 끈다. 창을 닫은 뒤에 카메라 열기가 끝나도 감지 중이 아니면 바로 끈다 |
+| 온보딩·기준 잡기 창 | `NSWindow` + `NSHostingController`, 1280×832 고정. 시작 → 권한 → 기준 잡기 → 완료 안내 후 창을 닫는다. 메뉴의 "기준 잡기"는 기준 잡기 화면만 띄운다. 완료 여부는 `UserDefaults` 키 `onboarded`(기준을 저장할 때 기록) |
+| 기준 잡기 미리보기 | 감지와 같은 `AVCaptureSession`에 `AVCaptureVideoPreviewLayer`(거울 모드)를 붙인다. 프레임은 저장하지 않는다. 미리보기가 켜진 동안에는 감지 주기와 별개로 프레임마다 얼굴 영역과 눈·코·입 중심(`VNDetectFaceLandmarksRequest`)을 구한다. 네모와 각 점은 시상수 `previewSmoothingTime`(0.15초)의 시간 기반 지수 평활로 따라가고, 얼굴을 놓친 프레임은 `previewHoldTime`(0.3초) 동안 마지막 표시를 유지한다(`PostureMonitor`). pitch를 얻으면(같은 0.3초 유지 포함) "기준 잡기" 버튼이 나온다. 수집이 시작되면 얼굴을 놓쳐도 화면과 버튼이 유지되고, 버튼은 수집이 끝날 때까지 비활성이다 |
+| 기준 잡기 진단 로그 | `os.Logger` debug, 카테고리 `calibration`. 시작 호출, 샘플 수, 얼굴 유무, 판정 결과와 실패 사유만 남기고 pitch·크기·좌표는 남기지 않는다 |
 | 거북이 오버레이 | `NSPanel` (borderless, nonactivating, 클릭 통과, 모든 Space) + 부위별 Core Animation 레이어(`TurtleView`), 디스플레이 링크로 프레임 수 조절. 동작과 상수는 `docs/overlay.md` |
 | 거북이 표시 토글 | 메뉴 `Toggle`, `UserDefaults` 키 `showTurtle` (기본 켜짐) |
-| 메뉴 막대 | SwiftUI `MenuBarExtra`, 템플릿 이미지 아이콘 |
-| 앱 창 (온보딩·리포트·설정) | SwiftUI `Window` |
+| 메뉴 막대 | SwiftUI `MenuBarExtra`, 템플릿 이미지 아이콘. `LSUIElement`로 Dock 아이콘을 숨긴다 |
+| 앱 창 (리포트·설정) | SwiftUI `Window` (예정) |
 | 리포트 차트 | Swift Charts |
 | 설정 | `UserDefaults` / `@AppStorage` |
 | `deviceSecret` | 키체인 |
