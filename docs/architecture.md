@@ -25,7 +25,8 @@ pitch·얼굴 크기·기준값은 `PostureCore`와 앱 안에서만 쓰이고 `
 | 기능 | 구현 |
 | --- | --- |
 | 카메라 + 얼굴 감지 | AVFoundation + Vision |
-| 거북이 오버레이 | `NSPanel` (borderless, nonactivating, 클릭 통과, 모든 Space) |
+| 거북이 오버레이 | `NSPanel` (borderless, nonactivating, 클릭 통과, 모든 Space) + SwiftUI 도형, `TimelineView` 애니메이션. 동작과 상수는 `docs/overlay.md` |
+| 거북이 표시 토글 | 메뉴 `Toggle`, `UserDefaults` 키 `showTurtle` (기본 켜짐) |
 | 메뉴 막대 | SwiftUI `MenuBarExtra`, 템플릿 이미지 아이콘 |
 | 앱 창 (온보딩·리포트·설정) | SwiftUI `Window` |
 | 리포트 차트 | Swift Charts |
