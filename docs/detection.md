@@ -52,6 +52,7 @@ score    = total < 4 ? 0 : total - 4
 | `Calibration.swift` | 기준 잡기 (여러 샘플로 안정성 평가) |
 | `Distance.swift` | 앉은 거리 변화 감지 |
 | `Feedback.swift` | 화면 단계 (`uncalibrated`, `unavailable`, `good`, `pendingBad`, `bad`, `recovering`). 초기 단계는 `unavailable` |
+| `Pet.swift` | 거북이 표시 상태(`away`, `bad`, `good`), 목 길이, 교정 강도 |
 
 ### 시간 상수
 
@@ -93,6 +94,19 @@ score    = total < 4 ? 0 : total - 4
 | 제안 대기 | 8초 |
 | 샘플 사이 최대 간격 | 1.6초 |
 
+### 펫 표시 상수 (`Pet.swift`)
+
+| 항목 | 값 |
+| --- | --- |
+| 목이 1씩 늘어나는 간격 | 0.9초 |
+| 목 길이 상한 | 24 |
+| 시작 지연: 느슨 (`loose`) | 3초 (`Timing.enterAfter`) |
+| 시작 지연: 보통 (`normal`, 기본값) | 1.5초 (`Timing.enterAfter / 2`) |
+| 시작 지연: 엄격 (`strict`) | 0초 |
+
+표시 상태는 `unavailable`·`uncalibrated`(단계 없음 포함)이면 `away`, `bad`이면 `bad`, 나머지(`good`, `pendingBad`, `recovering`)는 `good`이다.
+목 길이는 후보 시점에서 시작 지연을 더한 시각부터 `(now - startAt) / 0.9`로 늘고 24에서 멈춘다. 시작 지연은 화면 표시에만 적용하고 나쁜 자세 확정(3초)은 바꾸지 않는다.
+
 ## 구현 시 주의
 
 - 얼굴이 사라지면 점수를 마지막 값에 고정하지 않는다. `Timing.lostAfter` 이후 추적을 해제한다.
@@ -114,3 +128,4 @@ score    = total < 4 ? 0 : total - 4
 | 2026-11-26 | Engine 최초 구현 | 시간 상수 명세 기준 |
 | 2026-11-26 | Calibration, Distance 최초 구현 | 명세 기준 |
 | 2026-11-26 | Feedback 최초 구현 | 명세 기준 |
+| 2026-11-27 | Pet 최초 구현 | 명세 기준 |
