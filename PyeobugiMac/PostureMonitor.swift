@@ -26,6 +26,9 @@ final class PostureMonitor {
 
     var isRunning: Bool { camera == .running }
 
+    // When the score first crossed the entry line; nil once confirmed, because the engine then reuses the field for recovery
+    var candidateSince: TimeInterval? { engine.bad ? nil : engine.pendingSince }
+
     var isCalibrating: Bool {
         if case .collecting = calibration { return true }
         return false
