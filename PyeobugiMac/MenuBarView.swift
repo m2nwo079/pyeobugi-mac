@@ -4,6 +4,7 @@ import SwiftUI
 
 struct MenuBarView: View {
     let monitor: PostureMonitor
+    @Bindable var overlay: TurtleOverlay
 
     var body: some View {
         Text(monitor.title)
@@ -28,6 +29,7 @@ struct MenuBarView: View {
             monitor.startCalibration()
         }
         .disabled(!monitor.isRunning || monitor.isCalibrating)
+        Toggle("거북이 표시", isOn: $overlay.isVisible)
         Divider()
         Button("종료") {
             NSApplication.shared.terminate(nil)
