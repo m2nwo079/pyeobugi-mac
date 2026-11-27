@@ -5,6 +5,7 @@ import SwiftUI
 struct MenuBarView: View {
     let monitor: PostureMonitor
     @Bindable var overlay: TurtleOverlay
+    let onboarding: OnboardingWindow
 
     var body: some View {
         Text(monitor.title)
@@ -13,22 +14,20 @@ struct MenuBarView: View {
             Text("카메라 권한이 꺼져 있습니다.")
             Text("시스템 설정에서 펴부기의 카메라 접근을 허용해 주세요.")
             Button("시스템 설정에서 카메라 열기…") {
-                if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Camera") {
-                    NSWorkspace.shared.open(url)
-                }
+                NSWorkspace.shared.openCameraSettings()
             }
             Divider()
         }
         if let message = calibrationMessage {
             Text(message)
         }
-        Button(monitor.isRunning ? "감지 정지" : "감지 시작") {
+        Button(monitor.isDetecting ? "감지 정지" : "감지 시작") {
             Task { await monitor.toggleDetection() }
         }
         Button("기준 잡기") {
-            monitor.startCalibration()
+            onboarding.show(calibrationOnly: true)
         }
-        .disabled(!monitor.isRunning || monitor.isCalibrating)
+        .disabled(monitor.camera == .denied)
         Toggle("거북이 표시", isOn: $overlay.isVisible)
         Divider()
         Button("종료") {
@@ -40,7 +39,7 @@ struct MenuBarView: View {
     private var calibrationMessage: String? {
         switch monitor.calibration {
         case .idle:
-            return monitor.isRunning && monitor.baseline == nil ? "바르게 앉은 뒤 기준 잡기를 눌러 주세요." : nil
+            return monitor.isDetecting && monitor.baseline == nil ? "바르게 앉은 뒤 기준 잡기를 눌러 주세요." : nil
         case .collecting(let remaining):
             return "기준 잡는 중… \(remaining)초 동안 바르게 앉아 계세요."
         case .failed:
@@ -57,9 +56,10 @@ extension PostureMonitor {
         switch camera {
         case .idle: return "pause.circle"
         case .denied: return "lock"
-        case .unavailable: return "video.slash"
+        case .unavailable, .failed: return "video.slash"
         case .running: break
         }
+        guard isDetecting else { return "pause.circle" }
         switch feedback.phase {
         case .uncalibrated: return "scope"
         case .unavailable: return "magnifyingglass"
@@ -75,8 +75,10 @@ extension PostureMonitor {
         case .idle: return "감지 꺼짐"
         case .denied: return "카메라 권한 필요"
         case .unavailable: return "카메라 없음"
+        case .failed: return "카메라 오류"
         case .running: break
         }
+        guard isDetecting else { return "감지 꺼짐" }
         switch feedback.phase {
         case .uncalibrated: return "기준 필요"
         case .unavailable: return "얼굴 찾는 중"
