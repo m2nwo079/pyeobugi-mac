@@ -396,11 +396,13 @@ final class TurtleView: NSView {
         self.model = model
         super.init(frame: .zero)
         let root = CALayer()
-        root.isGeometryFlipped = true
         layer = root
         wantsLayer = true
         root.addSublayer(figure)
     }
+
+    // All drawing and motion use a top-left origin with y down; AppKit flips the root layer to match
+    override var isFlipped: Bool { true }
 
     @available(*, unavailable)
     required init?(coder: NSCoder) {
