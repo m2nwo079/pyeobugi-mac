@@ -32,8 +32,13 @@ pitch·얼굴 크기·기준값은 `PostureCore`와 앱 안에서만 쓰이고 `
 | 기준 잡기 진행 표시 | 수집 중에는 버튼 대신 남은 초(`CalibrationRun` 판정의 `remainingSeconds`)와 진행 막대를 보여 준다. 움직여서 실패하면 실패 문구와 "다시 시도" 버튼을 보여 주고, 새 시도가 시작되면 실패 표시를 지운다 |
 | 기준 잡기 진단 로그 | `os.Logger` debug, 카테고리 `calibration`. 시작 호출, 샘플 수, 얼굴 유무, 판정 결과와 실패 사유만 남기고 pitch·크기·좌표는 남기지 않는다 |
 | 거북이 오버레이 | `NSPanel` (borderless, nonactivating, 클릭 통과, 모든 Space) + 부위별 Core Animation 레이어(`TurtleView`), 디스플레이 링크로 프레임 수 조절. 동작과 상수는 `docs/overlay.md` |
-| 거북이 잡기·던지기 | 포인터가 거북이 위에 있을 때만 `ignoresMouseEvents`를 끈다 (`TurtlePointer`). 클릭이 통과하는 동안은 마우스 이동 전역 모니터(추가 권한 없음), 받는 동안은 뷰 추적 영역과 마우스 이벤트로 포인터를 얻는다. 받거나 끄는 동안만 도는 디스플레이 링크가 프레임마다 거북이 밖·버튼 떼어짐을 확인해 클릭 통과로 되돌린다. 물리(`TurtleFlight`)는 그리기 디스플레이 링크 프레임마다 한 단계 |
+| 거북이 잡기·던지기 | 포인터가 거북이(또는 누를 수 있는 말풍선) 위에 있을 때만 `ignoresMouseEvents`를 끈다 (`TurtlePointer`). 클릭이 통과하는 동안은 마우스 이동 전역 모니터(추가 권한 없음), 받는 동안은 뷰 추적 영역과 마우스 이벤트로 포인터를 얻는다. 받거나 끄는 동안만 도는 디스플레이 링크가 프레임마다 거북이 밖·버튼 떼어짐을 확인해 클릭 통과로 되돌린다. 물리(`TurtleFlight`)는 그리기 디스플레이 링크 프레임마다 한 단계 |
 | 거북이 표시 토글 | 메뉴 `Toggle`, `UserDefaults` 키 `showTurtle` (기본 켜짐) |
+| 말풍선 | `PostureCore`의 `BubblePicker`가 고르고, `TurtleBubbles`가 오버레이 갱신 루프에서 트리거를 넣는다. SwiftUI 뷰를 `NSHostingView`로 패널 컨테이너에 붙이고, `TurtleView`가 그린 프레임마다 머리 위로 옮긴다. 거리 말풍선은 `TurtlePointer`의 `tapArea`로 클릭을 받아 기준 잡기 창을 연다. 동작과 상수는 `docs/overlay.md` |
+| 앉은 거리 변화 | `PostureMonitor`가 감지 중 샘플마다 `stepDistance`로 갱신하고, 감지를 멈추면 초기화한다 |
+| 공부 타이머 | `PostureCore`의 `Pomodoro`를 `StudyTimer`가 1초마다 진행한다. 메뉴 `Toggle`, `UserDefaults` 키 `studyTimer` (기본 꺼짐). 거북이를 꺼 두면 오른쪽 아래 작은 패널(`TimerCorner`)에 남은 시간만 띄운다 |
+| 스트레칭 알림 | 메뉴 `Toggle`, `UserDefaults` 키 `stretchReminder` (기본 켜짐) |
+| Debug 짧은 시간 | Debug 빌드에서 실행 인자 `-fastTimers YES`면 분 단위 시간을 60분의 1로 (`FastTimers`) |
 | 교정 강도 | 메뉴 `Picker`(느슨·보통·엄격), `UserDefaults` 키 `sensitivity`(`Sensitivity.rawValue`, 기본 보통). 목이 늘어나기 시작하는 지연만 바꾸고 나쁜 자세 확정 시간은 그대로다 (`docs/detection.md` 펫 표시 상수) |
 | 반응 시간 로그 | `os.Logger` debug, 범주 `posture`. 후보 시작, 확정, 목 요청, 목 늘어남 시작, 회복 시각만 `FaceCapture.now()` 기준으로 남긴다. pitch·크기·점수는 남기지 않는다 (`docs/detection.md` 반응 지연) |
 | 메뉴 막대 | SwiftUI `MenuBarExtra`, 템플릿 이미지 아이콘. `LSUIElement`로 Dock 아이콘을 숨긴다 |
@@ -66,7 +71,8 @@ panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary
 ```
 
 `visibleFrame`은 메뉴 막대와 Dock을 뺀 영역.
-`ignoresMouseEvents`는 포인터가 거북이 위에 있는 동안만 `false`가 된다 (`docs/overlay.md` 포인터와 클릭 통과).
+`ignoresMouseEvents`는 포인터가 거북이나 누를 수 있는 말풍선 위에 있는 동안만 `false`가 된다 (`docs/overlay.md` 포인터와 클릭 통과).
+패널 내용 뷰는 빈 컨테이너이고, 그 안에 `TurtleView`와 말풍선 뷰를 나란히 둔다.
 
 ## 동시성
 

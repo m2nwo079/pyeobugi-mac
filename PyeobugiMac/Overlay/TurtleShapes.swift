@@ -274,7 +274,7 @@ private struct HeadOutline {
 private final class NeckHeadLayers {
     let root = group()
     private let collar = group()
-    private let fill = ArtShape(Path(), fill: .skin).layer()
+    let fill = ArtShape(Path(), fill: .skin).layer()
     private let line = ArtShape(Path(), stroke: .ink, width: TurtleArt.neckLine, roundCap: true).layer()
     private let eyes = group()
     private static let eyePart = ArtPart(.eyes, shapes: TurtleParts.headEyes)
@@ -344,6 +344,13 @@ private final class NeckLayers {
     private let frontHead = NeckHeadLayers()
     private var layout: NeckLayout?
 
+    // The head on the end of the neck; a head wrapped into the next column is not it
+    var leadHead: CAShapeLayer? {
+        guard let layout else { return nil }
+        if !layout.frontHeads.isEmpty { return frontHead.fill }
+        return layout.backHeads.isEmpty ? nil : backHeads[0].fill
+    }
+
     init() {
         for layer in [backTubes.fill, backTubes.sides] + backHeads.map(\.root) {
             behind.addSublayer(layer)
@@ -393,6 +400,8 @@ final class TurtleView: NSView {
     private var fullRate: Bool?
     // Receives mouse events while the panel takes them
     weak var pointer: TurtlePointer?
+    // Gets the top centre of the head after every drawn frame; set only while something sits over the head
+    var headFollower: ((CGPoint) -> Void)?
 
     init(model: TurtleModel) {
         self.model = model
@@ -461,8 +470,24 @@ final class TurtleView: NSView {
     private func render() {
         guard link != nil else { return }
         let t = TurtleModel.now()
-        draw(model.frame(at: t))
+        let frame = model.frame(at: t)
+        draw(frame)
+        headFollower?(headTop(frame))
         pace(at: t)
+    }
+
+    // Places a newly attached follower before the next frame
+    func followHead() {
+        headFollower?(headTop(model.frame(at: TurtleModel.now())))
+    }
+
+    // The drawn head of the long view, or a fixed height above the feet otherwise
+    private func headTop(_ f: TurtleFrame) -> CGPoint {
+        if f.look == .long, let head = neck.leadHead, let root = layer, let path = head.path, !head.isHidden {
+            let box = head.convert(path.boundingBox, to: root)
+            if !box.isEmpty { return CGPoint(x: box.midX, y: box.minY) }
+        }
+        return CGPoint(x: f.x, y: f.y - f.size * BubbleLayout.headAbove)
     }
 
     func draw(_ frame: TurtleFrame) {

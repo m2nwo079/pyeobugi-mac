@@ -16,8 +16,13 @@
    - 완료: 시작 화면 애니메이션 (로딩 → 노트북 등장 → 거북이 대기 → 확대·남색 덮기, `docs/intro.md`)
 6. **거북이 오버레이**
 7. **`PyeobugiAPI`**: 기기 등록, 이벤트 큐, 전송 (로컬 서버로 확인)
+   - 할 일: 말풍선이 뜰 때 `BUBBLE_SHOWN`, 집중을 끝낼 때 `POMODORO_COMPLETED` 적재 (`docs/backend-integration.md`).
+     거리 말풍선은 전용 `bubbleType`이 없어 `POSTURE`로 셀지 정해야 한다. 집중 완료는 `Pomodoro.tick`의 `focusCompleted`로 알 수 있다
 8. **리포트 화면**: `GET /api/reports/summary`, Swift Charts
 9. **뽀모도로, 말풍선, 스트레칭 알림, 로그인 시 실행**
+   - 완료: 말풍선 6종과 고르기, 공부 타이머(집중 25분·휴식 5분), 스트레칭 알림, 거리 말풍선을 누르면 기준 잡기 (`docs/overlay.md`)
+   - 남음: 로그인 시 실행
+   - 다음 작업 "장시간 부재 시 카메라 끄기"에서 함께: 자리를 오래 비우면 감지와 카메라를 끄는 설정 토글 (`docs/detection.md`의 장시간 부재)
 10. **배포**: 서명, 공증, dmg, CI(GitHub Actions macOS 러너)
 
 ## 미결정 사항

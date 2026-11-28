@@ -29,6 +29,8 @@ struct MenuBarView: View {
         }
         .disabled(monitor.camera == .denied)
         Toggle("거북이 표시", isOn: $overlay.isVisible)
+        Toggle("공부 타이머", isOn: $overlay.studyTimerOn)
+        Toggle("스트레칭 알림", isOn: $overlay.stretchReminder)
         Picker("교정 강도", selection: $overlay.sensitivity) {
             ForEach(Sensitivity.allCases, id: \.self) { level in
                 Text(level.label).tag(level)
