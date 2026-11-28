@@ -136,6 +136,12 @@ final class TurtleBubbles {
 final class TimerCorner {
     private let timer: StudyTimer
     private var panel: NSPanel?
+    // Set by TurtleOverlay from the "show over full screen" toggle
+    var overFullScreen = true {
+        didSet {
+            if let panel { TurtleOverlay.setOverFullScreen(overFullScreen, on: panel) }
+        }
+    }
 
     init(timer: StudyTimer) {
         self.timer = timer
@@ -143,7 +149,7 @@ final class TimerCorner {
 
     func setShown(_ shown: Bool) {
         if shown, panel == nil {
-            let panel = TurtleOverlay.makePanel(.zero)
+            let panel = TurtleOverlay.makePanel(.zero, overFullScreen: overFullScreen)
             panel.contentView = NSHostingView(rootView: CornerTimer(timer: timer))
             self.panel = panel
             fitScreen()

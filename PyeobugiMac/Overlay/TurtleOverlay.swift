@@ -10,6 +10,7 @@ final class TurtleOverlay {
     static let sensitivityKey = "sensitivity"
     static let studyTimerKey = "studyTimer"
     static let stretchReminderKey = "stretchReminder"
+    static let overFullScreenKey = "showOverFullScreen"
     // How often posture is turned into a neck length
     static let updateInterval: TimeInterval = 0.1
 
@@ -42,6 +43,15 @@ final class TurtleOverlay {
         didSet { UserDefaults.standard.set(stretchReminder, forKey: Self.stretchReminderKey) }
     }
 
+    // Whether both panels also appear on another app's full-screen Space; applied to open panels right away
+    var overFullScreen: Bool {
+        didSet {
+            UserDefaults.standard.set(overFullScreen, forKey: Self.overFullScreenKey)
+            if let panel { Self.setOverFullScreen(overFullScreen, on: panel) }
+            corner.overFullScreen = overFullScreen
+        }
+    }
+
     @ObservationIgnored private let monitor: PostureMonitor
     @ObservationIgnored private let timer: StudyTimer
     @ObservationIgnored private let bubbles: TurtleBubbles
@@ -65,13 +75,15 @@ final class TurtleOverlay {
         corner = TimerCorner(timer: timer)
         let defaults = UserDefaults.standard
         // bool(forKey:) also reads launch arguments such as `-showTurtle NO`, which arrive as strings
-        defaults.register(defaults: [Self.visibleKey: true, Self.studyTimerKey: false, Self.stretchReminderKey: true])
+        defaults.register(defaults: [Self.visibleKey: true, Self.studyTimerKey: false, Self.stretchReminderKey: true, Self.overFullScreenKey: true])
         isVisible = defaults.bool(forKey: Self.visibleKey)
         sensitivity = (defaults.object(forKey: Self.sensitivityKey) as? Int).flatMap(Sensitivity.init(rawValue:)) ?? .default
         studyTimerOn = defaults.bool(forKey: Self.studyTimerKey)
         stretchReminder = defaults.bool(forKey: Self.stretchReminderKey)
+        overFullScreen = defaults.bool(forKey: Self.overFullScreenKey)
         // didSet does not run during init
         monitor.sensitivity = sensitivity
+        corner.overFullScreen = overFullScreen
         timer.setRunning(studyTimerOn)
         // The first saved baseline ends onboarding, so the overlay may appear now
         monitor.onBaselineSaved = { [weak self] in self?.apply() }
@@ -104,7 +116,7 @@ final class TurtleOverlay {
     }
 
     // A transparent click-through panel over every Space
-    static func makePanel(_ frame: CGRect) -> NSPanel {
+    static func makePanel(_ frame: CGRect, overFullScreen: Bool) -> NSPanel {
         let panel = NSPanel(
             contentRect: frame,
             styleMask: [.borderless, .nonactivatingPanel],
@@ -118,15 +130,26 @@ final class TurtleOverlay {
         panel.ignoresMouseEvents = true
         panel.acceptsMouseMovedEvents = true
         panel.level = .statusBar
-        // Show on every Space and over full-screen apps
-        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
+        panel.collectionBehavior = collectionBehavior(overFullScreen: overFullScreen)
         panel.isReleasedWhenClosed = false
         return panel
     }
 
+    // Every Space, and another app's full-screen Space only with .fullScreenAuxiliary.
+    // Where the panel is left out it stays open, so the timer and bubbles keep running while it is not drawn
+    static func collectionBehavior(overFullScreen: Bool) -> NSWindow.CollectionBehavior {
+        overFullScreen ? [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary] : [.canJoinAllSpaces, .stationary]
+    }
+
+    // Ordering the panel again makes the window server place it by the new behavior on the current Space
+    static func setOverFullScreen(_ on: Bool, on panel: NSPanel) {
+        panel.collectionBehavior = collectionBehavior(overFullScreen: on)
+        panel.orderFrontRegardless()
+    }
+
     private func show() {
         guard let screen = NSScreen.screens.first else { return }
-        let panel = Self.makePanel(screen.visibleFrame)
+        let panel = Self.makePanel(screen.visibleFrame, overFullScreen: overFullScreen)
         let model = TurtleModel(screen: screen.visibleFrame.size, reduceMotion: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion)
         let view = TurtleView(model: model)
         // TurtleView hosts its own layers, so the bubble is its sibling rather than its subview
