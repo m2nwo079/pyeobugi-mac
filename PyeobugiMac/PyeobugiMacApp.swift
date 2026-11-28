@@ -17,7 +17,7 @@ struct PyeobugiMacApp: App {
         let monitor = PostureMonitor()
         let onboarding = OnboardingWindow(monitor: monitor)
         _monitor = State(initialValue: monitor)
-        _overlay = State(initialValue: TurtleOverlay(monitor: monitor))
+        _overlay = State(initialValue: TurtleOverlay(monitor: monitor) { onboarding.show(calibrationOnly: true) })
         _onboarding = State(initialValue: onboarding)
         if !PostureMonitor.isOnboarded {
             // Runs once the app has finished launching

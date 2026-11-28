@@ -220,7 +220,7 @@ struct TurtleFlight {
 
 // MARK: - Pointer
 
-// Lets the overlay take mouse events only while the pointer is over the turtle; everywhere else clicks reach the apps
+// Lets the overlay take mouse events only while the pointer is over the turtle or a tappable bubble; everywhere else clicks reach the apps
 // underneath. While events pass through, a global mouse-moved monitor (no extra permission) reports the pointer;
 // while they are taken, the view's tracking area and its own mouse events do
 final class TurtlePointer: NSObject {
@@ -234,6 +234,9 @@ final class TurtlePointer: NSObject {
     private var dragging = false
     // A hand cursor was set and has to be put back
     private var handShown = false
+    // A tappable bubble in view points, kept up to date while one is shown
+    var tapArea: CGRect?
+    var onTap: (() -> Void)?
 
     init(panel: NSPanel, model: TurtleModel, view: TurtleView) {
         self.panel = panel
@@ -284,10 +287,12 @@ final class TurtlePointer: NSObject {
         NSEvent.pressedMouseButtons & 1 != 0
     }
 
-    // Take events only over the turtle, and never start while a button is held for another app's drag
+    // Take events only over the turtle or a tappable bubble, and never start while a button is held for another app's drag
     func moved() {
         guard !dragging else { return }
-        setCatching(model.contains(location(), at: TurtleModel.now()) && !leftButtonDown)
+        let p = location()
+        let over = model.contains(p, at: TurtleModel.now()) || tapArea?.contains(p) == true
+        setCatching(over && !leftButtonDown)
         // Other apps may reset the cursor while this app is in the background
         if catching, handShown { NSCursor.openHand.set() }
     }
@@ -323,6 +328,11 @@ final class TurtlePointer: NSObject {
     }
 
     func mouseDown() {
+        // The bubble wins over the turtle underneath it
+        if let tapArea, tapArea.contains(location()) {
+            onTap?()
+            return
+        }
         guard model.grab(at: location(), at: TurtleModel.now()) else { return }
         dragging = true
         NSCursor.closedHand.set()
