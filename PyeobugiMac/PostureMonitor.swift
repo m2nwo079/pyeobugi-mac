@@ -42,6 +42,8 @@ final class PostureMonitor {
     @ObservationIgnored var sensitivity = Sensitivity.default
     // Called after a baseline is saved and onboarding is marked complete
     @ObservationIgnored var onBaselineSaved: (() -> Void)?
+    // Receives usage, bad posture and calibration events; set by the app before detection starts
+    @ObservationIgnored var recorder: EventRecorder?
 
     @ObservationIgnored private var engine = EngineState.initial
     @ObservationIgnored private var calibrationRun: CalibrationRun?
@@ -103,6 +105,7 @@ final class PostureMonitor {
         detectedBefore = elapsed(at: .now)
         detectingSince = nil
         isDetecting = false
+        recorder?.flushUsage()
         engine = .initial
         distance = .initial
         feedback = updateFeedback(feedback, engine: engine, at: FaceCapture.now(), calibrated: baseline != nil, transitions: [])
@@ -193,6 +196,8 @@ final class PostureMonitor {
             finishCalibration(.failed)
         case .complete(let newBaseline):
             Self.log.debug("Calibration complete")
+            // Calibrating again after onboarding, from the menu, the settings or the distance bubble
+            recorder?.calibrationCompleted(isRecalibration: Self.isOnboarded)
             baseline = newBaseline
             UserDefaults.standard.set([newBaseline.pitch, newBaseline.size], forKey: Self.baselineKey)
             UserDefaults.standard.set(true, forKey: Self.onboardedKey)
@@ -245,11 +250,23 @@ final class PostureMonitor {
             engine = state
             distance = stepDistance(distance, at: sample.at, size: sample.face?.size, baseline: baseline)
             feedback = updateFeedback(feedback, engine: engine, at: sample.at, calibrated: baseline != nil, transitions: transitions)
+            record(sample, transitions: transitions)
         }
         // nil leaves the gate closed until detection or calibration starts
         if let next = nextDetection(engine, at: sample.at, detecting: isDetecting, calibrating: calibrationRun != nil) {
             capture.scheduleNext(at: next)
         }
+    }
+
+    // Bad time counts only while confirmed bad; recovery is not counted again, since entry is already backdated
+    private func record(_ sample: Sample, transitions: [Transition]) {
+        guard let recorder else { return }
+        let now = Date.now
+        for case let .badEnter(at, severity) in transitions {
+            // From the monotonic capture clock to wall time
+            recorder.postureBad(severity, since: now.addingTimeInterval(at - FaceCapture.now()))
+        }
+        recorder.usageSample(face: sample.face != nil, bad: feedback.phase == .bad, mild: feedback.severity == .mild, at: now)
     }
 
     private func logReaction(from old: EngineState, to new: EngineState, transitions: [Transition]) {

@@ -22,8 +22,10 @@ final class StudyTimer {
         rest: PomodoroTiming.rest * FastTimers.scale
     )
     @ObservationIgnored private var ticks: Task<Void, Never>?
+    @ObservationIgnored private let recorder: EventRecorder
 
-    init() {
+    init(recorder: EventRecorder) {
+        self.recorder = recorder
         state = pomodoro.state
     }
 
@@ -46,7 +48,9 @@ final class StudyTimer {
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(1))
                 guard let self else { return }
-                self.state = self.pomodoro.tick(at: Self.now()).state
+                let (state, focusCompleted) = self.pomodoro.tick(at: Self.now())
+                self.state = state
+                if focusCompleted { self.recorder.pomodoroCompleted() }
             }
         }
     }

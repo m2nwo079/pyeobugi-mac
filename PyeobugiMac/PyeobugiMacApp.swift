@@ -18,9 +18,13 @@ struct PyeobugiMacApp: App {
     @State private var main: MainWindow
 
     init() {
+        let recorder = EventRecorder.openDefault()
+        recorder.sessionStarted()
+        AppDelegate.terminate = { recorder.sessionEnded() }
         let monitor = PostureMonitor()
+        monitor.recorder = recorder
         let onboarding = OnboardingWindow(monitor: monitor)
-        let overlay = TurtleOverlay(monitor: monitor) { onboarding.show(calibrationOnly: true) }
+        let overlay = TurtleOverlay(monitor: monitor, recorder: recorder) { onboarding.show(calibrationOnly: true) }
         let main = MainWindow(monitor: monitor, overlay: overlay) { onboarding.show(calibrationOnly: true) }
         onboarding.onFinished = { main.show(.report) }
         AppDelegate.reopen = { main.show() }
@@ -57,6 +61,8 @@ struct PyeobugiMacApp: App {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     // Set by the app before launch finishes
     static var reopen: () -> Void = {}
+    // Closes the last usage segment and ends the session; not called on a crash or a forced quit
+    static var terminate: () -> Void = {}
     private static let log = Logger(subsystem: Bundle.main.bundleIdentifier ?? "PyeobugiMac", category: "app")
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -70,6 +76,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 }
             }
         }
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        Self.terminate()
     }
 
     // A Dock click or launching the app again brings the front open window forward, or opens the main window
