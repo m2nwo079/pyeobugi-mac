@@ -6,8 +6,9 @@
 Camera (AVCaptureSession)
   → Vision (VNDetectFaceRectanglesRequest rev3): pitch, boundingBox.height
   → PostureCore: smoothing → score → engine state machine → feedback
-  → App: overlay, menu bar, main window (report, settings), bubbles, usage tracking
-  → PyeobugiAPI: anonymous events → queue → POST /api/events
+  → App: overlay, menu bar, main window (report, settings), bubbles
+  → EventRecorder → PyeobugiAPI: anonymous events, usage segments → EventStore (local files)
+  → later: unsent events → POST /api/events
 ```
 
 pitch·얼굴 크기·기준값은 `PostureCore`와 앱 안에서만 쓰이고 `PyeobugiAPI`로 넘어가지 않는다.
@@ -18,7 +19,7 @@ pitch·얼굴 크기·기준값은 `PostureCore`와 앱 안에서만 쓰이고 `
 | --- | --- | --- |
 | `PyeobugiMac` (앱) | SwiftUI 화면, 메뉴 막대, 오버레이, 카메라, Vision | `PostureCore`, `PyeobugiAPI` |
 | `PostureCore` | 점수, 상태 기계, 평활, 기준 잡기, 거리 변화 | 없음 (Foundation만) |
-| `PyeobugiAPI` | `Codable` 이벤트, 기기 등록, 이벤트 큐, 리포트 조회 | Foundation |
+| `PyeobugiAPI` | `Codable` 이벤트, KST 시각, 사용 구간, 이벤트 저장소. 기기 등록·전송·리포트 조회는 서버 연동 단계 | Foundation |
 
 ## 기능별 구현
 
@@ -48,7 +49,8 @@ pitch·얼굴 크기·기준값은 `PostureCore`와 앱 안에서만 쓰이고 `
 | Dock 아이콘 | 제목 막대가 있는 창(메인, 온보딩·기준 잡기)이 열려 있는 동안만 activation policy `.regular`로 Dock과 Cmd+Tab에 보이고, 마지막 창이 닫히면(`NSWindow.willCloseNotification`) `.accessory`로 메뉴 막대 전용이 된다. Dock으로 내린 창도 열린 창으로 센다. 오버레이 패널은 제목 막대가 없어 세지 않는다. `LSUIElement`는 쓰지 않으므로 실행 직후에는 `.regular`이고, 실행할 때 항상 창을 연다. 창은 `NSWindow.bringToFront()`로 정책을 `.regular`로 바꾼 뒤 키 창으로 만들고 앱을 활성화한다. Dock 아이콘 클릭과 재실행(`applicationShouldHandleReopen`)은 열린 창 중 맨 앞 창을 앞으로 가져오고, 열린 창이 없으면 메인 창을 연다 (`AppDelegate`) |
 | 설정 | `UserDefaults`. 메뉴·설정 화면·오버레이가 같은 `TurtleOverlay` 인스턴스의 속성을 쓴다 |
 | `deviceSecret` | 키체인 |
-| 이벤트 큐 | `PyeobugiAPI` (`Codable` + 파일 기반 큐) |
+| 이벤트 기록 | 앱의 `EventRecorder`가 세션·사용 구간·나쁜 자세·기준 잡기·말풍선·집중 완료·설정 변경을 이벤트로 만들어 `EventStore` 프로토콜에 넘긴다. 저장은 `PyeobugiAPI`의 `FileEventStore`(KST 날짜별 JSON, 원자적 쓰기, 90일 보관, 하루 5,000개). 규칙은 `docs/events.md` |
+| 감지 시작 실행 인자 | `-startDetection YES`면 온보딩을 마친 상태에서 실행 직후 감지를 시작한다. 실행 인자에서만 읽어 `UserDefaults`에 남지 않는다 (측정용) |
 | 로그인 시 실행 | `SMAppService.mainApp` |
 
 ## 오버레이 기본 설정
