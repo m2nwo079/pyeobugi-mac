@@ -19,6 +19,15 @@
 | `Packages/PostureCore/Sources/PostureCore/Bubble.swift` | 말풍선 고르기(`BubblePicker`): 우선순위, 표시 시간, 간격, 종류별 대기 |
 | `Packages/PostureCore/Sources/PostureCore/Pomodoro.swift` | 집중·휴식 상태 기계(`Pomodoro`), 남은 시간 표시(`formatRemaining`) |
 
+## 띄우는 조건
+
+- 패널을 띄울지는 `TurtleOverlay.apply()` 한 곳에서 정한다.
+  - 거북이 패널: 온보딩 완료(`PostureMonitor.isOnboarded`) 그리고 "거북이 표시" 켬
+  - 오른쪽 아래 타이머 패널: 온보딩 완료 그리고 "거북이 표시" 끔 그리고 "공부 타이머" 켬
+- 온보딩이 끝나기 전에는 거북이도 타이머 패널도 띄우지 않는다. 기준 잡기 창 위로 거북이가 돌아다니지 않게 하기 위해서다.
+- 기준을 저장해 온보딩이 끝나는 순간(`PostureMonitor.onBaselineSaved`) 다시 판단해 띄운다. 메뉴의 "기준 잡기"로 다시 저장할 때도 불리지만 결과는 같다.
+- 공부 타이머는 패널과 상관없이 돈다. 온보딩 중에 타이머가 켜져 있어도 시간은 흐르고, 패널이 뜨면 그때의 남은 시간을 보여 준다.
+
 ## 동작 요약
 
 - 행동 루프는 `MainActor`의 `Task` 하나가 순서대로 실행한다. 대기는 `Task.sleep`이고, `TurtleView`가 디스플레이 링크마다 시각으로부터 프레임을 계산한다.

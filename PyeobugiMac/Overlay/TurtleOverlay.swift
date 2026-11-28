@@ -73,6 +73,8 @@ final class TurtleOverlay {
         // didSet does not run during init
         monitor.sensitivity = sensitivity
         timer.setRunning(studyTimerOn)
+        // The first saved baseline ends onboarding, so the overlay may appear now
+        monitor.onBaselineSaved = { [weak self] in self?.apply() }
         let center = NotificationCenter.default
         // Windows are created once the app has finished launching
         center.addObserver(forName: NSApplication.didFinishLaunchingNotification, object: nil, queue: .main) { [weak self] _ in
@@ -87,14 +89,18 @@ final class TurtleOverlay {
         }
     }
 
+    // The single place that decides what the overlay shows.
+    // Nothing appears before onboarding ends, so the turtle never walks over the calibration window
     private func apply() {
-        if isVisible, panel == nil {
+        let onboarded = PostureMonitor.isOnboarded
+        let turtleShown = onboarded && isVisible
+        if turtleShown, panel == nil {
             show()
-        } else if !isVisible, panel != nil {
+        } else if !turtleShown, panel != nil {
             hide()
         }
         // Without the turtle there is no head to put the timer over
-        corner.setShown(!isVisible && studyTimerOn)
+        corner.setShown(onboarded && !isVisible && studyTimerOn)
     }
 
     // A transparent click-through panel over every Space

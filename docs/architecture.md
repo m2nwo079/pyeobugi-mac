@@ -34,6 +34,7 @@ pitch·얼굴 크기·기준값은 `PostureCore`와 앱 안에서만 쓰이고 `
 | 거북이 오버레이 | `NSPanel` (borderless, nonactivating, 클릭 통과, 모든 Space) + 부위별 Core Animation 레이어(`TurtleView`), 디스플레이 링크로 프레임 수 조절. 동작과 상수는 `docs/overlay.md` |
 | 거북이 잡기·던지기 | 포인터가 거북이(또는 누를 수 있는 말풍선) 위에 있을 때만 `ignoresMouseEvents`를 끈다 (`TurtlePointer`). 클릭이 통과하는 동안은 마우스 이동 전역 모니터(추가 권한 없음), 받는 동안은 뷰 추적 영역과 마우스 이벤트로 포인터를 얻는다. 받거나 끄는 동안만 도는 디스플레이 링크가 프레임마다 거북이 밖·버튼 떼어짐을 확인해 클릭 통과로 되돌린다. 물리(`TurtleFlight`)는 그리기 디스플레이 링크 프레임마다 한 단계 |
 | 거북이 표시 토글 | 메뉴 `Toggle`, `UserDefaults` 키 `showTurtle` (기본 켜짐) |
+| 오버레이 표시 조건 | `TurtleOverlay.apply()` 한 곳에서 정한다. 온보딩(`onboarded`)이 끝나기 전에는 거북이·타이머 패널을 띄우지 않고, 기준을 저장하면 `PostureMonitor.onBaselineSaved`로 다시 판단한다. 조건은 `docs/overlay.md` 띄우는 조건 |
 | 말풍선 | `PostureCore`의 `BubblePicker`가 고르고, `TurtleBubbles`가 오버레이 갱신 루프에서 트리거를 넣는다. SwiftUI 뷰를 `NSHostingView`로 패널 컨테이너에 붙이고, `TurtleView`가 그린 프레임마다 머리 위로 옮긴다. 거리 말풍선은 `TurtlePointer`의 `tapArea`로 클릭을 받아 기준 잡기 창을 연다. 동작과 상수는 `docs/overlay.md` |
 | 앉은 거리 변화 | `PostureMonitor`가 감지 중 샘플마다 `stepDistance`로 갱신하고, 감지를 멈추면 초기화한다 |
 | 공부 타이머 | `PostureCore`의 `Pomodoro`를 `StudyTimer`가 1초마다 진행한다. 메뉴 `Toggle`, `UserDefaults` 키 `studyTimer` (기본 꺼짐). 거북이를 꺼 두면 오른쪽 아래 작은 패널(`TimerCorner`)에 남은 시간만 띄운다 |
