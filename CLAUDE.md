@@ -60,5 +60,6 @@ docs/                   design notes and decisions
 - `docs/architecture.md`: 데이터 흐름, 모듈 구조, 기능별 구현
 - `docs/detection.md`: Vision 감지, 점수식, 시간 상수, 상수 변경 기록
 - `docs/overlay.md`: 거북이 오버레이 동작, 동작 상수(크기, 속도, 확률, 대기·전환 시간)
+- `docs/intro.md`: 온보딩 시작 화면 단계, 시간·이징·확률 상수, 부분별 그리는 방법
 - `docs/backend-integration.md`: API, 이벤트 종류, 인코딩 규칙
 - `docs/roadmap.md`: 작업 순서와 미결정 사항

@@ -14,6 +14,8 @@ chmod +x .githooks/*
 
 전체 세팅은 [docs/setup.md](docs/setup.md)를 참고하세요.
 
+시작 화면 글꼴은 Pretendard(SIL Open Font License 1.1)이며, 라이선스 전문은 [ThirdPartyLicenses/](ThirdPartyLicenses/)에 있고 앱 번들에도 함께 들어갑니다.
+
 ## 브랜치
 
 | 브랜치 | 용도 |
