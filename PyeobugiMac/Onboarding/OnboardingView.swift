@@ -5,6 +5,8 @@ import SwiftUI
 final class OnboardingWindow: NSObject, NSWindowDelegate {
     private let monitor: PostureMonitor
     private var window: NSWindow?
+    // Called when the full onboarding, not a recalibration, ends with its completion dialog
+    var onFinished: (() -> Void)?
 
     init(monitor: PostureMonitor) {
         self.monitor = monitor
@@ -14,6 +16,7 @@ final class OnboardingWindow: NSObject, NSWindowDelegate {
         if window == nil {
             let root = OnboardingView(monitor: monitor, step: calibrationOnly ? .calibrate : .intro) { [weak self] in
                 self?.window?.close()
+                if !calibrationOnly { self?.onFinished?() }
             }
             let window = NSWindow(contentViewController: NSHostingController(rootView: root))
             window.styleMask = [.titled, .closable, .miniaturizable]
@@ -24,8 +27,7 @@ final class OnboardingWindow: NSObject, NSWindowDelegate {
             self.window = window
             monitor.holdCamera(true)
         }
-        window?.makeKeyAndOrderFront(nil)
-        NSApp.activate()
+        window?.bringToFront()
     }
 
     func windowWillClose(_ notification: Notification) {

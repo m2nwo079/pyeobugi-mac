@@ -135,7 +135,7 @@ tuned.pitch    = baseline.pitch + (enterPitch - baseEnterPitch)
 
 표시 상태는 `unavailable`·`uncalibrated`(단계 없음 포함)이면 `away`, `bad`이면 `bad`, 나머지(`good`, `pendingBad`, `recovering`)는 `good`이다.
 목 길이는 후보 시점에서 시작 지연을 더한 시각부터 `(now - startAt) / 0.9`로 늘고 24에서 멈춘다. 시작 지연은 화면 표시에만 적용하고 나쁜 자세 확정(3초)은 바꾸지 않는다.
-교정 강도는 메뉴의 "교정 강도"(느슨·보통·엄격)로 고르며, 판정 각도(점수식의 교정 강도별 판정 각도)와 목 시작 지연을 함께 바꾼다. `UserDefaults` 키 `sensitivity`에 `Sensitivity.rawValue`(0·1·2)로 저장한다. 값이 없거나 알 수 없으면 `Sensitivity.default`(보통)를 쓴다.
+교정 강도는 설정 화면의 "교정 강도"(느슨하게·보통·엄격하게)로 고르며, 판정 각도(점수식의 교정 강도별 판정 각도)와 목 시작 지연을 함께 바꾼다. `UserDefaults` 키 `sensitivity`에 `Sensitivity.rawValue`(0·1·2)로 저장한다. 값이 없거나 알 수 없으면 `Sensitivity.default`(보통)를 쓴다.
 
 ## 반응 지연
 

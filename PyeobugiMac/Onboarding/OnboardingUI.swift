@@ -10,6 +10,7 @@ extension Color {
     static let grey100 = Color(hex: 0xF3F5F8)
     static let grey200 = Color(hex: 0xE3E7EC)
     static let grey300 = Color(hex: 0xD0D5DC)
+    static let grey500 = Color(hex: 0x7D8590)
     static let grey700 = Color(hex: 0x5B636E)
     static let grey900 = Color(hex: 0x2D333B)
     static let scrim = Color.main1.opacity(0.8)
@@ -20,11 +21,12 @@ extension Color {
 }
 
 enum TextStyle {
-    case display, heading, body, bodyBold, label, labelBold, caption
+    case display, title, heading, body, bodyBold, label, labelBold, caption
 
     var size: CGFloat {
         switch self {
         case .display: 40
+        case .title: 34
         case .heading: 24
         case .body, .bodyBold: 16
         case .label, .labelBold: 14
@@ -32,18 +34,19 @@ enum TextStyle {
         }
     }
 
-    var weight: Font.Weight {
+    // PostScript name of a bundled Pretendard face
+    var fontName: String {
         switch self {
-        case .heading: .medium
-        case .bodyBold, .labelBold: .semibold
-        default: .regular
+        case .title, .heading: "Pretendard-Medium"
+        case .bodyBold, .labelBold: "Pretendard-SemiBold"
+        default: "Pretendard-Regular"
         }
     }
 
     // Letter spacing in em
     var tracking: CGFloat {
         switch self {
-        case .display: -0.03
+        case .display, .title: -0.03
         case .heading: -0.02
         default: 0
         }
@@ -52,7 +55,7 @@ enum TextStyle {
     var lineHeight: CGFloat {
         switch self {
         case .display: 1.2
-        case .heading: 1.3
+        case .title, .heading: 1.3
         case .body, .bodyBold: 1.5
         default: 1.4
         }
@@ -60,10 +63,10 @@ enum TextStyle {
 }
 
 extension View {
-    // Line height is approximate: the system font's default line height is assumed to be about 1.2 times
-    // the font size, so only the remainder is added as line spacing. Adjust per style if text looks off.
+    // Pretendard's default line height is about 1.19 times the font size (registered through
+    // ATSApplicationFontsPath), so only the remainder above 1.2 is added as line spacing
     func textStyle(_ style: TextStyle) -> some View {
-        font(.system(size: style.size, weight: style.weight))
+        font(.custom(style.fontName, fixedSize: style.size))
             .tracking(style.size * style.tracking)
             .lineSpacing(style.size * max(style.lineHeight - 1.2, 0))
     }

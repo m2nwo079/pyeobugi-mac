@@ -12,7 +12,7 @@
 | `PyeobugiMac/Overlay/TurtleModel.swift` | 동작 상수, 행동 루프, 목 길이, 프레임마다 그릴 값 계산 |
 | `PyeobugiMac/Overlay/TurtleShapes.swift` | 여섯 모습과 긴 목의 그림 경로, 부위별 Core Animation 레이어로 그리는 `TurtleView` |
 | `PyeobugiMac/Overlay/TurtleGrab.swift` | 잡기·던지기·떨어지기 상수와 물리(`TurtleFlight`), 포인터 추적과 클릭 통과 전환·커서(`TurtlePointer`) |
-| `PyeobugiMac/Overlay/TurtleOverlay.swift` | 패널 생성, 메뉴 토글, 자세 → 목 길이 연결, 말풍선 갱신 호출 |
+| `PyeobugiMac/Overlay/TurtleOverlay.swift` | 패널 생성, 메뉴·설정 화면이 함께 쓰는 설정 값, 자세 → 목 길이 연결, 말풍선 갱신 호출 |
 | `PyeobugiMac/Overlay/TurtleBubbles.swift` | 말풍선 트리거, 머리 위 표시와 따라가기(`TurtleBubbles`), 거북이를 껐을 때의 타이머 패널(`TimerCorner`) |
 | `PyeobugiMac/Overlay/SpeechBubble.swift` | 말풍선·타이머 SwiftUI 뷰와 문구 |
 | `PyeobugiMac/StudyTimer.swift` | 공부 타이머를 1초마다 진행, Debug 짧은 시간 모드(`FastTimers`) |
@@ -25,9 +25,9 @@
   - 거북이 패널: 온보딩 완료(`PostureMonitor.isOnboarded`) 그리고 "거북이 표시" 켬
   - 오른쪽 아래 타이머 패널: 온보딩 완료 그리고 "거북이 표시" 끔 그리고 "공부 타이머" 켬
 - 온보딩이 끝나기 전에는 거북이도 타이머 패널도 띄우지 않는다. 기준 잡기 창 위로 거북이가 돌아다니지 않게 하기 위해서다.
-- 기준을 저장해 온보딩이 끝나는 순간(`PostureMonitor.onBaselineSaved`) 다시 판단해 띄운다. 메뉴의 "기준 잡기"로 다시 저장할 때도 불리지만 결과는 같다.
+- 기준을 저장해 온보딩이 끝나는 순간(`PostureMonitor.onBaselineSaved`) 다시 판단해 띄운다. 메뉴의 "기준 잡기"나 설정 화면의 "기준 다시 잡기"로 다시 저장할 때도 불리지만 결과는 같다.
 - 공부 타이머는 패널과 상관없이 돈다. 온보딩 중에 타이머가 켜져 있어도 시간은 흐르고, 패널이 뜨면 그때의 남은 시간을 보여 준다.
-- 다른 앱의 전체 화면 Space에 띄울지는 메뉴 "전체 화면에서도 표시"(`UserDefaults` 키 `showOverFullScreen`, 기본 켜짐)가 정한다. 전체 화면을 따로 감지하지 않고 패널 `collectionBehavior`만 바꾸므로 추가 권한은 필요 없다.
+- 다른 앱의 전체 화면 Space에 띄울지는 설정 화면 "전체 화면에서도 표시"(`UserDefaults` 키 `showOverFullScreen`, 기본 켜짐)가 정한다. 전체 화면을 따로 감지하지 않고 패널 `collectionBehavior`만 바꾸므로 추가 권한은 필요 없다.
   - 켜짐: `.fullScreenAuxiliary`를 넣어 전체 화면 앱 위에도 두 패널을 띄운다.
   - 꺼짐: `.fullScreenAuxiliary`를 빼서 시스템이 그 Space에 두 패널을 그리지 않는다. 패널은 닫지 않는다. 갱신 루프, 공부 타이머, 말풍선 고르기는 그대로 돌고, 보이지 않는 동안 뜬 말풍선도 평소처럼 6초 뒤 끝난다. 일반 Space로 돌아오면 그 순간의 상태를 그대로 보여 준다.
   - 토글을 바꾸면 열려 있는 거북이 패널과 구석 타이머 패널의 `collectionBehavior`를 바로 바꾸고 다시 앞으로 올린다(`orderFrontRegardless`). 새로 여는 패널은 그때의 값으로 만든다.
@@ -45,9 +45,9 @@
 - 방향 전환은 여덟 방향(왼쪽 → 앞왼쪽 → 정면 → 앞오른쪽 → 오른쪽 → 뒤오른쪽 → 뒤 → 뒤왼쪽)을 가까운 쪽으로 한 칸씩 지난다. 정반대일 때는 0.75 확률로 정면을 지나는 쪽을 고른다. 오른쪽 계열은 왼쪽 그림의 거울상이다.
 - 목 늘이기는 다른 행동보다 우선한다. 대기 중이면 바로 끊고, 걷는 중이면 그 자리에서 멈춘다. 이미 시작한 방향 전환과 머리 털기는 끝까지 한다.
 - 목을 늘일 때는 가장 가까운 옆모습으로 돈 뒤 살짝 웅크렸다가 스프링으로 목표 길이를 따라간다. 머리가 화면 위로 나가면 옆 칸 아래에서 다시 올라온다. 칸은 얼굴 쪽 가까운 칸부터 쓰고, 끝에 닿으면 반대편 끝에서 안쪽으로 이어 간다.
-- 목 길이는 `PostureCore`의 `neckLength`에 메뉴에서 고른 교정 강도를 넘겨 계산한다 (시작 지연은 `docs/detection.md` 펫 표시 상수). 자세 확인 중(`pendingBad`)으로 처음 본 후보 시각을 붙잡아 두고 확정(`bad`) 뒤에도 유지하며, 바른 자세·회복 중·얼굴 없음이 되면 버린다.
+- 목 길이는 `PostureCore`의 `neckLength`에 설정에서 고른 교정 강도를 넘겨 계산한다 (시작 지연은 `docs/detection.md` 펫 표시 상수). 자세 확인 중(`pendingBad`)으로 처음 본 후보 시각을 붙잡아 두고 확정(`bad`) 뒤에도 유지하며, 바른 자세·회복 중·얼굴 없음이 되면 버린다.
 - 시스템의 "동작 줄이기"가 켜져 있으면 자율 행동과 모든 반복 움직임을 하지 않는다. 목은 돌기·스프링 없이 가장 가까운 옆모습으로 바꾼 뒤 길이만 바로 반영한다.
-- 메뉴의 "거북이 표시"(`UserDefaults` 키 `showTurtle`, 기본 켜짐)를 끄면 패널을 닫고, 다시 켜면 처음 상태로 새로 만든다.
+- 메뉴의 "거북이 표시"나 설정 화면의 "거북이 오버레이 표시"(`UserDefaults` 키 `showTurtle`, 기본 켜짐)를 끄면 패널을 닫고, 다시 켜면 처음 상태로 새로 만든다.
 - 패널의 내용 뷰는 빈 컨테이너다. `TurtleView`는 자기 레이어를 직접 가지는 뷰라 하위 뷰를 둘 수 없어서, 말풍선 뷰를 `TurtleView`의 형제로 둔다.
 
 ## 잡기·던지기·떨어지기
@@ -107,9 +107,9 @@
 - 머리 위치: 긴 목 모습이면 그려진 머리(목 끝의 머리, 옆 칸으로 넘어간 머리 말고) 외곽선의 위쪽 가운데, 아니면 발 위치에서 크기 × 0.8 위. 말풍선 꼬리 끝을 그보다 8 pt 위에 둔다.
 - 따라가기: `TurtleView`가 프레임을 그린 직후 `headFollower`를 불러 같은 프레임의 머리 위치로 옮긴다. 머리 위에 아무것도 없으면 `headFollower`가 `nil`이라 따라가는 처리가 없다. 내용이 바뀔 때만 SwiftUI 뷰를 바꾸고 크기를 다시 잰다(타이머는 1초마다).
 - 거북이를 꺼 두고 공부 타이머가 켜져 있으면 주 화면 `visibleFrame` 오른쪽 아래(가로·세로 24 pt 안쪽)에 남은 시간만 담은 작은 클릭 통과 패널을 띄운다.
-- 공부 타이머: 메뉴 "공부 타이머"(`UserDefaults` 키 `studyTimer`, 기본 꺼짐). 켜면 집중부터 새로 시작하고 끄면 처음으로 되돌린다. 감지와 묶지 않는다. 앱을 시작할 때 켜져 있으면 바로 시작한다. 시계는 벽시계라 잠자기 동안 지난 구간은 깨어난 뒤 한꺼번에 넘긴다.
-- 스트레칭 알림: 메뉴 "스트레칭 알림"(`UserDefaults` 키 `stretchReminder`, 기본 켜짐).
-- 전체 화면에서도 표시: 메뉴 "전체 화면에서도 표시"(`UserDefaults` 키 `showOverFullScreen`, 기본 켜짐). 동작은 위 "띄우는 조건".
+- 공부 타이머: 설정 화면 "공부 타이머"(`UserDefaults` 키 `studyTimer`, 기본 꺼짐). 켜면 집중부터 새로 시작하고 끄면 처음으로 되돌린다. 감지와 묶지 않는다. 앱을 시작할 때 켜져 있으면 바로 시작한다. 시계는 벽시계라 잠자기 동안 지난 구간은 깨어난 뒤 한꺼번에 넘긴다.
+- 스트레칭 알림: 설정 화면 "스트레칭 알림"(`UserDefaults` 키 `stretchReminder`, 기본 켜짐).
+- 전체 화면에서도 표시: 설정 화면 "전체 화면에서도 표시"(`UserDefaults` 키 `showOverFullScreen`, 기본 켜짐). 동작은 위 "띄우는 조건".
 - 토글 기본값은 `register(defaults:)`로 등록하고 `bool(forKey:)`로 읽는다. 실행 인자(`-showTurtle NO`, `-studyTimer YES`, `-showOverFullScreen NO`)도 같은 키로 읽힌다.
 - Debug 빌드에서 `-fastTimers YES`로 실행하면 분 단위 시간(집중, 휴식, 스트레칭 간격, 종류별 대기)을 60분의 1로 줄인다. 표시 6초와 간격 5초는 그대로다. Release 빌드는 이 인자를 무시한다.
 
