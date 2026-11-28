@@ -256,6 +256,8 @@ final class TurtlePointer: NSObject {
         watch(app, NSApplication.didChangeScreenParametersNotification, nil)
         watch(app, NSWindow.didChangeBackingPropertiesNotification, panel)
         watch(workspace, NSWorkspace.willSleepNotification, nil)
+        // Entering or leaving a full-screen Space, where the panel is not shown
+        watch(workspace, NSWorkspace.activeSpaceDidChangeNotification, nil)
     }
 
     private func watch(_ center: NotificationCenter, _ name: Notification.Name, _ object: AnyObject?) {
@@ -291,7 +293,8 @@ final class TurtlePointer: NSObject {
     func moved() {
         guard !dragging else { return }
         let p = location()
-        let over = model.contains(p, at: TurtleModel.now()) || tapArea?.contains(p) == true
+        // On a full-screen Space the panel is not drawn, so the hidden turtle must not take events or change the cursor
+        let over = panel.isOnActiveSpace && (model.contains(p, at: TurtleModel.now()) || tapArea?.contains(p) == true)
         setCatching(over && !leftButtonDown)
         // Other apps may reset the cursor while this app is in the background
         if catching, handShown { NSCursor.openHand.set() }
