@@ -1,4 +1,5 @@
 import SwiftUI
+import os
 
 // MARK: - Constants (durations in seconds)
 
@@ -402,6 +403,7 @@ final class TurtleModel {
                 heading = nearestSide()
                 columns = makeColumns()
                 longView = true
+                PostureMonitor.postureLog.debug("neck growing t=\(FaceCapture.now(), format: .fixed(precision: 3), privacy: .public)")
             }
             if !wanted, longView {
                 longView = false
@@ -610,6 +612,7 @@ final class TurtleModel {
         neckTarget = 0
         springClock = Self.now()
         phase = .long
+        PostureMonitor.postureLog.debug("neck growing t=\(FaceCapture.now(), format: .fixed(precision: 3), privacy: .public)")
     }
 
     private func exitLong() async {

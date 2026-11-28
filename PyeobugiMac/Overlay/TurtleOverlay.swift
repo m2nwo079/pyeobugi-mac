@@ -1,11 +1,13 @@
 import AppKit
 import Observation
 import PostureCore
+import os
 
 // Owns the overlay panel and feeds posture into the turtle's neck
 @Observable
 final class TurtleOverlay {
     static let visibleKey = "showTurtle"
+    static let sensitivityKey = "sensitivity"
     // How often posture is turned into a neck length
     static let updateInterval: TimeInterval = 0.1
 
@@ -16,16 +18,24 @@ final class TurtleOverlay {
         }
     }
 
+    // How soon the neck starts growing; stored as Sensitivity.rawValue
+    var sensitivity: Sensitivity {
+        didSet { UserDefaults.standard.set(sensitivity.rawValue, forKey: Self.sensitivityKey) }
+    }
+
     @ObservationIgnored private let monitor: PostureMonitor
     @ObservationIgnored private var panel: NSPanel?
     @ObservationIgnored private var model: TurtleModel?
     @ObservationIgnored private var view: TurtleView?
     @ObservationIgnored private var updates: Task<Void, Never>?
     @ObservationIgnored private var candidateSince: TimeInterval?
+    // Whether "neck requested" was logged for the current candidate
+    @ObservationIgnored private var neckLogged = false
 
     init(monitor: PostureMonitor) {
         self.monitor = monitor
         isVisible = UserDefaults.standard.object(forKey: Self.visibleKey) as? Bool ?? true
+        sensitivity = (UserDefaults.standard.object(forKey: Self.sensitivityKey) as? Int).flatMap(Sensitivity.init(rawValue:)) ?? .default
         let center = NotificationCenter.default
         // Windows are created once the app has finished launching
         center.addObserver(forName: NSApplication.didFinishLaunchingNotification, object: nil, queue: .main) { [weak self] _ in
@@ -91,6 +101,7 @@ final class TurtleOverlay {
         panel?.close()
         panel = nil
         candidateSince = nil
+        neckLogged = false
     }
 
     private func fitScreen() {
@@ -102,6 +113,7 @@ final class TurtleOverlay {
     private func update() {
         let now = FaceCapture.now()
         let phase = monitor.feedback.phase
+        let held = candidateSince
         // Hold the first candidate time through confirmation, because the engine reuses it for recovery.
         // Drop it once posture is good, recovering or unknown so the neck shrinks
         if phase == .pendingBad || petMood(from: phase) == .bad {
@@ -109,6 +121,15 @@ final class TurtleOverlay {
         } else {
             candidateSince = nil
         }
-        model?.setNeck(neckLength(candidateSince: candidateSince, at: now))
+        let length = neckLength(candidateSince: candidateSince, sensitivity: sensitivity, at: now)
+        if let since = candidateSince, length > 0, !neckLogged {
+            neckLogged = true
+            PostureMonitor.postureLog.debug("neck requested t=\(now, format: .fixed(precision: 3), privacy: .public) +\(now - since, format: .fixed(precision: 3), privacy: .public)s from candidate")
+        }
+        if let held, candidateSince == nil {
+            neckLogged = false
+            PostureMonitor.postureLog.debug("recovered t=\(now, format: .fixed(precision: 3), privacy: .public) +\(now - held, format: .fixed(precision: 3), privacy: .public)s from candidate (\(String(describing: phase), privacy: .public))")
+        }
+        model?.setNeck(length)
     }
 }
