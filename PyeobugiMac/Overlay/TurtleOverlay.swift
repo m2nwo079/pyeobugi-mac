@@ -27,6 +27,7 @@ final class TurtleOverlay {
     @ObservationIgnored private var panel: NSPanel?
     @ObservationIgnored private var model: TurtleModel?
     @ObservationIgnored private var view: TurtleView?
+    @ObservationIgnored private var pointer: TurtlePointer?
     @ObservationIgnored private var updates: Task<Void, Never>?
     @ObservationIgnored private var candidateSince: TimeInterval?
     // Whether "neck requested" was logged for the current candidate
@@ -68,6 +69,7 @@ final class TurtleOverlay {
         panel.hasShadow = false
         // Let clicks pass through to the apps underneath
         panel.ignoresMouseEvents = true
+        panel.acceptsMouseMovedEvents = true
         panel.level = .statusBar
         // Show on every Space and over full-screen apps
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
@@ -81,6 +83,8 @@ final class TurtleOverlay {
         self.panel = panel
         self.model = model
         self.view = view
+        // Pointer tracking exists only while the overlay is shown
+        pointer = TurtlePointer(panel: panel, model: model, view: view)
         model.start()
         view.start()
         updates = Task { [weak self] in
@@ -92,6 +96,8 @@ final class TurtleOverlay {
     }
 
     private func hide() {
+        pointer?.stop()
+        pointer = nil
         updates?.cancel()
         updates = nil
         model?.stop()

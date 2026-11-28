@@ -391,6 +391,8 @@ final class TurtleView: NSView {
     private var shown: TurtleLook?
     private var link: CADisplayLink?
     private var fullRate: Bool?
+    // Receives mouse events while the panel takes them
+    weak var pointer: TurtlePointer?
 
     init(model: TurtleModel) {
         self.model = model
@@ -399,7 +401,20 @@ final class TurtleView: NSView {
         layer = root
         wantsLayer = true
         root.addSublayer(figure)
+        // Mouse moves arrive here even while the app is in the background
+        addTrackingArea(NSTrackingArea(rect: .zero, options: [.mouseMoved, .activeAlways, .inVisibleRect], owner: self))
     }
+
+    // The first click grabs right away without activating the app
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
+    override func mouseMoved(with event: NSEvent) { pointer?.moved() }
+
+    override func mouseDown(with event: NSEvent) { pointer?.mouseDown() }
+
+    override func mouseDragged(with event: NSEvent) { pointer?.mouseDragged() }
+
+    override func mouseUp(with event: NSEvent) { pointer?.mouseUp() }
 
     // All drawing and motion use a top-left origin with y down; AppKit flips the root layer to match
     override var isFlipped: Bool { true }
@@ -424,6 +439,7 @@ final class TurtleView: NSView {
     }
 
     @objc private func step(_ link: CADisplayLink) {
+        model.advance(to: TurtleModel.now())
         render()
     }
 
@@ -504,7 +520,7 @@ final class TurtleView: NSView {
         }
     }
 
-    // Drawing units to view points: mirror, scale to size, breathe or waddle, hop, and stand on the floor
+    // Drawing units to view points: mirror, scale to size, breathe or waddle, hop, tilt, and stand on the floor
     private func placement(_ f: TurtleFrame) -> CGAffineTransform {
         let units = TurtleArt.units, size = Double(f.size)
         let anchor = CGPoint(x: size / 2, y: size * TurtleSize.footLine)
@@ -515,6 +531,7 @@ final class TurtleView: NSView {
         t = t.concatenating(CGAffineTransform(translationX: 0, y: f.bobOffset))
         t = t.concatenating(around(anchor, CGAffineTransform(scaleX: f.hopScale.width, y: f.hopScale.height)))
         t = t.concatenating(CGAffineTransform(translationX: 0, y: f.hopOffset))
+        t = t.concatenating(rotation(f.tilt * 180 / .pi, about: anchor))
         return t.concatenating(CGAffineTransform(translationX: Double(f.x) - anchor.x, y: Double(f.y) - anchor.y))
     }
 

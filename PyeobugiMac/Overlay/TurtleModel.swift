@@ -282,6 +282,8 @@ struct TurtleFrame {
     var eyeOpen = 1.0
     var eyesClosed = false
     var neck: NeckLayout?
+    // Whole-figure turn around the feet in radians, while held or falling
+    var tilt = 0.0
 }
 
 // MARK: - Model
@@ -289,7 +291,7 @@ struct TurtleFrame {
 @Observable
 final class TurtleModel {
     private enum Pose {
-        case idle, walk, long
+        case idle, walk, long, held, falling
     }
 
     private enum Phase {
@@ -312,6 +314,7 @@ final class TurtleModel {
         var start: TimeInterval
         var duration: TimeInterval
         var frames: Keyframes
+        var curve = UnitCurve.easeInOutCurve
     }
 
     private struct NeckExit {
@@ -351,6 +354,8 @@ final class TurtleModel {
     private var neck = 0.0
     private var neckExit: NeckExit?
     private var columns: Columns?
+    // In the hand, in the air, or just landed and not grabbable yet
+    private var airborne = false
 
     @ObservationIgnored let blinkOrigin: TimeInterval
     @ObservationIgnored private var phase = Phase.normal
@@ -361,6 +366,11 @@ final class TurtleModel {
     @ObservationIgnored private var neckVelocity = 0.0
     @ObservationIgnored private var springClock: TimeInterval = 0
     @ObservationIgnored private var life: Task<Void, Never>?
+    // Physics changes every frame; the view draws it at the full rate, so it is not observed
+    @ObservationIgnored private var flight: TurtleFlight?
+    @ObservationIgnored private var flailSince: TimeInterval = 0
+    @ObservationIgnored private var landed = false
+    @ObservationIgnored private var wanderPausedUntil: TimeInterval = 0
 
     init(screen: CGSize, reduceMotion: Bool) {
         self.reduceMotion = reduceMotion
@@ -397,6 +407,8 @@ final class TurtleModel {
     func setNeck(_ ratio: Double) {
         neckWanted = max(0, ratio)
         let wanted = neckWanted > NeckStretch.wantedThreshold
+        // Posture feedback wins: the turtle slips out of the hand
+        if wanted, pose == .held { endGrab(throwing: false, at: Self.now()) }
         if reduceMotion {
             // No turning and no spring: jump to the nearest side view and show the length directly
             if wanted, !longView {
@@ -426,6 +438,10 @@ final class TurtleModel {
     private func runLife() async {
         await nap(TurtleLife.startDelay)
         while !Task.isCancelled {
+            if busy {
+                await sleep(TurtleGrab.busyPoll)
+                continue
+            }
             // The neck always wins over the next wandering action
             if longRequested {
                 longRequested = false
@@ -437,6 +453,17 @@ final class TurtleModel {
                 unlongRequested = false
                 await exitLong()
                 await nap(TurtleLife.restAfterNeck)
+                continue
+            }
+            if landed {
+                // Shake the fall off
+                landed = false
+                await shakeHead()
+                await nap(.random(in: TurtleFall.restAfterLanding))
+                continue
+            }
+            if Self.now() < wanderPausedUntil {
+                await nap(TurtleGrab.pausePoll)
                 continue
             }
             let roll = Double.random(in: 0..<1)
@@ -463,10 +490,10 @@ final class TurtleModel {
         try? await Task.sleep(for: .seconds(max(0, seconds)))
     }
 
-    // Rest that ends early when the neck has to grow
+    // Rest that ends early when the neck has to grow or the turtle is picked up
     private func nap(_ seconds: TimeInterval) async {
         let end = Self.now() + seconds
-        while Self.now() < end, !longRequested, !Task.isCancelled {
+        while Self.now() < end, !longRequested, !busy, !Task.isCancelled {
             await sleep(TurtleLife.napPoll)
         }
     }
@@ -476,8 +503,8 @@ final class TurtleModel {
         poseSince = Self.now()
     }
 
-    private func startHop(_ frames: Keyframes, duration: TimeInterval) {
-        hop = Hop(start: Self.now(), duration: duration, frames: frames)
+    private func startHop(_ frames: Keyframes, duration: TimeInterval, curve: UnitCurve = .easeInOutCurve) {
+        hop = Hop(start: Self.now(), duration: duration, frames: frames, curve: curve)
     }
 
     private func squash(_ height: Double, duration: TimeInterval) async {
@@ -516,6 +543,8 @@ final class TurtleModel {
         hop = Hop(start: start, duration: duration, frames: TurtleKeyframes.turnHop(duration: duration))
         await sleep(TurtleTurn.lead)
         for next in path {
+            // A grab turns the turtle to the front and ends the turn
+            guard !busy else { return }
             heading = next
             await sleep(TurtleTurn.step)
         }
@@ -552,18 +581,21 @@ final class TurtleModel {
     private func walkTo(_ goal: CGFloat) async {
         let target = clampX(goal)
         await turnTo(target < x ? .left : .right)
-        guard !longRequested, !Task.isCancelled else { return }
+        guard !longRequested, !busy, !Task.isCancelled else { return }
         let segment = Walk(from: x, to: target, start: Self.now(), duration: abs(target - x) / (size * TurtleWalk.speed))
         walk = segment
         setPose(.walk)
         var reached = target
         while Self.now() < segment.start + segment.duration {
+            // A grab has already taken the position and stopped the walk
+            if busy { return }
             if longRequested || Task.isCancelled {
                 reached = segment.x(at: Self.now())
                 break
             }
             await sleep(TurtleWalk.checkInterval)
         }
+        if busy { return }
         x = reached
         walk = nil
         setPose(.idle)
@@ -584,7 +616,8 @@ final class TurtleModel {
         shakeSince = Self.now()
         await sleep(TurtleShake.duration)
         shakeSince = nil
-        setPose(.idle)
+        // Breathing starts over, unless the turtle was picked up meanwhile
+        if pose == .idle { setPose(.idle) }
         await sleep(TurtleShake.beforeOpening)
         eyesClosed = false
         await sleep(TurtleShake.opening)
@@ -750,7 +783,7 @@ final class TurtleModel {
     // Until when something moves faster than breathing and the idle tail: walking, turning, squashing,
     // shaking, eyelids and the neck pulling back. The neck spring redraws on every step by itself
     var fullRateUntil: TimeInterval {
-        if walk != nil || shakeSince != nil || neckExit != nil { return .infinity }
+        if walk != nil || shakeSince != nil || neckExit != nil || pose == .held || airborne { return .infinity }
         var end = eyesClosingSince + TurtleEyes.lidTransition
         if let hop { end = max(end, hop.start + hop.duration) }
         return end
@@ -759,19 +792,29 @@ final class TurtleModel {
     func frame(at t: TimeInterval) -> TurtleFrame {
         let look = longView && heading.look == .side ? TurtleLook.long : heading.look
         var f = TurtleFrame(x: walk?.x(at: t) ?? x, y: ground, size: size, look: look, flipped: heading.isFlipped)
+        if let flight {
+            f.x = flight.foot.x
+            f.y = flight.foot.y
+            f.tilt = flight.tilt
+        }
         if look == .long {
             f.neck = neckLayout(neckLength(at: t))
         }
         guard !reduceMotion else { return f }
 
         if let hop {
-            let v = hop.frames.values(at: UnitCurve.easeInOutCurve.value(at: min(1, max(0, (t - hop.start) / hop.duration))))
+            let v = hop.frames.values(at: hop.curve.value(at: min(1, max(0, (t - hop.start) / hop.duration))))
             f.hopOffset = v[0]
             f.hopScale = CGSize(width: v[1], height: v[2])
         }
 
         let elapsed = t - poseSince
-        if let shakeSince {
+        if pose == .held {
+            // The hold overrides a head shake still running underneath
+            let head = TurtleKeyframes.tremble.values(at: swing(elapsed, TurtleGrab.tremblePeriod))
+            f.headAngle = head[0]
+            f.headLift = head[1]
+        } else if let shakeSince {
             let p = (t - shakeSince) / TurtleShake.duration
             f.bobAngle = TurtleKeyframes.jiggle.values(at: p)[0]
             let head = TurtleKeyframes.shake.values(at: p)
@@ -792,16 +835,120 @@ final class TurtleModel {
             f.headAngle = nod[0]
             f.headLift = nod[1]
         }
-        f.tailAngle = pose == .walk
-            ? TurtleKeyframes.wag.values(at: swing(elapsed, TurtleMotion.walkSwingPeriod))[0]
-            : TurtleKeyframes.wag.values(at: cycle(elapsed, TurtleMotion.idleWagPeriod))[0]
+        if pose == .held || pose == .falling {
+            // The flail keeps its clock from the grab; only its period changes on release
+            let held = pose == .held
+            let period = held ? TurtleGrab.heldFlailPeriod : TurtleGrab.fallingFlailPeriod
+            let lead = held ? TurtleGrab.heldFlailLead : TurtleGrab.fallingFlailLead
+            let since = t - flailSince
+            let front = TurtleKeyframes.flail.values(at: swing(since, period))
+            let back = TurtleKeyframes.flail.values(at: swing(since + lead, period))
+            f.frontLeg = LegPose(angle: front[0], lift: front[1])
+            f.backLeg = LegPose(angle: back[0], lift: back[1])
+        } else {
+            f.tailAngle = pose == .walk
+                ? TurtleKeyframes.wag.values(at: swing(elapsed, TurtleMotion.walkSwingPeriod))[0]
+                : TurtleKeyframes.wag.values(at: cycle(elapsed, TurtleMotion.idleWagPeriod))[0]
+        }
 
         let blink = TurtleKeyframes.blink.values(at: cycle(t - blinkOrigin, TurtleEyes.blinkPeriod))[0]
         let lid = UnitCurve.easeInOutCurve.value(at: min(1, max(0, (t - eyesClosingSince) / TurtleEyes.lidTransition)))
         f.eyeOpen = eyesClosing
             ? blink + (TurtleEyes.shutHeight - blink) * lid
             : TurtleEyes.shutHeight + (blink - TurtleEyes.shutHeight) * lid
-        f.eyesClosed = eyesClosed
+        // Eyes stay shut in the hand and in the air
+        f.eyesClosed = eyesClosed || pose == .held || pose == .falling
         return f
+    }
+
+    // MARK: Grab, throw and fall
+
+    private var busy: Bool { pose == .held || airborne }
+
+    var isHeld: Bool { pose == .held }
+
+    // Only on the floor with the neck in and motion allowed
+    var canGrab: Bool {
+        !reduceMotion && !busy && phase == .normal && !longView
+    }
+
+    // Pointer hit box around the feet, in view points
+    func contains(_ point: CGPoint, at t: TimeInterval) -> Bool {
+        let foot = flight?.foot ?? CGPoint(x: walk?.x(at: t) ?? x, y: ground)
+        return abs(point.x - foot.x) <= size * TurtleGrab.hitHalfWidth
+            && point.y >= foot.y - size * TurtleGrab.hitAbove
+            && point.y <= foot.y + TurtleGrab.hitBelow
+    }
+
+    func grab(at pointer: CGPoint, at t: TimeInterval) -> Bool {
+        guard canGrab else { return false }
+        if let walk { x = walk.x(at: t) }
+        walk = nil
+        shakeSince = nil
+        eyesClosed = false
+        if eyesClosing { setEyesClosing(false) }
+        landed = false
+        // Startled, it faces the front
+        heading = .front
+        setPose(.held)
+        flailSince = t
+        startHop(TurtleKeyframes.startle, duration: TurtleGrab.startleDuration, curve: .easeOutCurve)
+        flight = TurtleFlight(foot: CGPoint(x: x, y: ground), size: size, pointer: pointer, at: t)
+        wanderPausedUntil = t + TurtleGrab.wanderPause
+        return true
+    }
+
+    func moveGrab(to pointer: CGPoint, at t: TimeInterval) {
+        guard pose == .held else { return }
+        flight?.move(to: pointer, screen: screen, at: t)
+    }
+
+    func release(at t: TimeInterval) {
+        endGrab(throwing: true, at: t)
+        wanderPausedUntil = t + TurtleGrab.wanderPause
+    }
+
+    private func endGrab(throwing: Bool, at t: TimeInterval) {
+        guard pose == .held, var flight else { return }
+        flight.release(throwing: throwing, at: t)
+        self.flight = flight
+        // The flail clock carries on from the grab
+        pose = .falling
+        airborne = true
+    }
+
+    // One physics step per display frame while held or falling
+    func advance(to t: TimeInterval) {
+        guard var flight else { return }
+        if pose == .held {
+            flight.hold(to: t)
+            self.flight = flight
+            return
+        }
+        let half = size / 2
+        switch flight.fall(to: t, minX: half, maxX: screen.width - half, floor: ground) {
+        case .none:
+            self.flight = flight
+        case .bounce:
+            self.flight = flight
+            startHop(TurtleKeyframes.landing(TurtleFall.bounceSquash), duration: TurtleFall.bounceDuration, curve: .easeOutCurve)
+        case .landed:
+            x = flight.foot.x
+            self.flight = nil
+            land()
+        }
+    }
+
+    // Squash on the floor and keep the eyes shut until the head shake
+    private func land() {
+        startHop(TurtleKeyframes.landing(1), duration: TurtleFall.landDuration, curve: .easeOutCurve)
+        setEyesClosing(true)
+        eyesClosed = true
+        setPose(.idle)
+        Task {
+            await sleep(TurtleFall.settle)
+            airborne = false
+            landed = true
+        }
     }
 }
