@@ -29,9 +29,12 @@ pitch·얼굴 크기·기준값은 `PostureCore`와 앱 안에서만 쓰이고 `
 | 온보딩·기준 잡기 창 | `NSWindow` + `NSHostingController`, 1280×832 고정. 시작 → 권한 → 기준 잡기 → 완료 안내 후 창을 닫는다. 메뉴의 "기준 잡기"는 기준 잡기 화면만 띄운다. 완료 여부는 `UserDefaults` 키 `onboarded`(기준을 저장할 때 기록) |
 | 온보딩 시작 화면 | `NSViewRepresentable`(`IntroScreen`)로 감싼 `IntroView`. 1280×832 무대를 창을 덮도록 맞추고, 정적 그림(배경·노트북·화면 광택)은 2배 PNG, 거북이 부위는 4배 PNG, 로고는 벡터 SVG, 글자는 Core Text(Pretendard 번들)로 그린다. 디스플레이 링크가 가상 시계(`IntroClock`)를 옮기고 레이어 변형만 바꾼다. 창을 닫거나 권한 화면으로 넘어가면 디스플레이 링크와 포인터 추적을 멈춘다. 동작과 상수는 `docs/intro.md` |
 | 기준 잡기 미리보기 | 감지와 같은 `AVCaptureSession`에 `AVCaptureVideoPreviewLayer`(거울 모드)를 붙인다. 프레임은 저장하지 않는다. 미리보기가 켜진 동안에는 감지 주기와 별개로 프레임마다 얼굴 영역과 눈·코·입 중심(`VNDetectFaceLandmarksRequest`)을 구한다. 네모와 각 점은 시상수 `previewSmoothingTime`(0.15초)의 시간 기반 지수 평활로 따라가고, 얼굴을 놓친 프레임은 `previewHoldTime`(0.3초) 동안 마지막 표시를 유지한다(`PostureMonitor`). pitch를 얻으면(같은 0.3초 유지 포함) "기준 잡기" 버튼이 나온다. 수집이 시작되면 얼굴을 놓쳐도 화면과 버튼이 유지되고, 버튼은 수집이 끝날 때까지 비활성이다 |
+| 기준 잡기 진행 표시 | 수집 중에는 버튼 대신 남은 초(`CalibrationRun` 판정의 `remainingSeconds`)와 진행 막대를 보여 준다. 움직여서 실패하면 실패 문구와 "다시 시도" 버튼을 보여 주고, 새 시도가 시작되면 실패 표시를 지운다 |
 | 기준 잡기 진단 로그 | `os.Logger` debug, 카테고리 `calibration`. 시작 호출, 샘플 수, 얼굴 유무, 판정 결과와 실패 사유만 남기고 pitch·크기·좌표는 남기지 않는다 |
 | 거북이 오버레이 | `NSPanel` (borderless, nonactivating, 클릭 통과, 모든 Space) + 부위별 Core Animation 레이어(`TurtleView`), 디스플레이 링크로 프레임 수 조절. 동작과 상수는 `docs/overlay.md` |
 | 거북이 표시 토글 | 메뉴 `Toggle`, `UserDefaults` 키 `showTurtle` (기본 켜짐) |
+| 교정 강도 | 메뉴 `Picker`(느슨·보통·엄격), `UserDefaults` 키 `sensitivity`(`Sensitivity.rawValue`, 기본 보통). 목이 늘어나기 시작하는 지연만 바꾸고 나쁜 자세 확정 시간은 그대로다 (`docs/detection.md` 펫 표시 상수) |
+| 반응 시간 로그 | `os.Logger` debug, 범주 `posture`. 후보 시작, 확정, 목 요청, 목 늘어남 시작, 회복 시각만 `FaceCapture.now()` 기준으로 남긴다. pitch·크기·점수는 남기지 않는다 (`docs/detection.md` 반응 지연) |
 | 메뉴 막대 | SwiftUI `MenuBarExtra`, 템플릿 이미지 아이콘. `LSUIElement`로 Dock 아이콘을 숨긴다 |
 | 앱 창 (리포트·설정) | SwiftUI `Window` (예정) |
 | 리포트 차트 | Swift Charts |

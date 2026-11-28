@@ -1,5 +1,6 @@
 import AVFoundation
 import AppKit
+import PostureCore
 import SwiftUI
 
 struct CalibrationView: View {
@@ -20,12 +21,12 @@ struct CalibrationView: View {
         ZStack {
             CameraPreview(monitor: monitor)
             OnboardingHeader(current: capturing ? 3 : 2)
-            OnboardingPanel(title: capturing ? "바른 자세로 앉은 뒤 기준을 잡아주세요." : "얼굴이 보이도록 앉아주세요.",
-                            message: failed ? Self.failedMessage : message) {
-                if capturing {
-                    Button("기준 잡기") { monitor.startCalibration() }
+            OnboardingPanel(title: title, message: message) {
+                if case .collecting(let remaining) = monitor.calibration {
+                    CalibrationProgress(remaining: remaining, total: CalibrationRun.duration)
+                } else if capturing {
+                    Button(failed ? "다시 시도" : "기준 잡기") { monitor.startCalibration() }
                         .buttonStyle(FilledButtonStyle(large: true))
-                        .disabled(monitor.isCalibrating)
                 }
             }
             if done {
@@ -41,19 +42,62 @@ struct CalibrationView: View {
             await monitor.openCamera()
         }
         .onChange(of: monitor.calibration) { _, status in
-            if status == .failed {
+            switch status {
+            case .failed:
                 failed = true
-            } else if status == .saved {
+            case .collecting:
+                // A new attempt clears the previous failure
+                failed = false
+            case .saved:
                 failed = false
                 done = true
+            case .idle:
+                break
             }
         }
     }
 
+    private var seconds: Int { Int(CalibrationRun.duration.rounded()) }
+
+    private var title: String {
+        if monitor.isCalibrating { return "그대로 바른 자세를 유지해 주세요." }
+        return capturing ? "바른 자세로 앉은 뒤 기준을 잡아주세요." : "얼굴이 보이도록 앉아주세요."
+    }
+
     private var message: String {
-        capturing
-            ? "지금 자세가 앞으로 교정할 기준이 돼요. 버튼을 누르는 순간의 위치가 저장돼요."
+        if monitor.isCalibrating { return "\(seconds)초 동안 바른 자세를 유지해 주세요. 움직이면 다시 시도해야 해요." }
+        if failed { return Self.failedMessage }
+        return capturing
+            ? "버튼을 누르면 \(seconds)초 동안 자세를 재서 기준으로 저장해요. 바르게 앉은 뒤 눌러 주세요."
             : "두 눈·코·입에 점이 모두 찍히면 다음 단계로 넘어가요."
+    }
+}
+
+// Seconds left and a bar, both taken straight from the calibration verdict
+private struct CalibrationProgress: View {
+    let remaining: Int
+    let total: TimeInterval
+
+    private var fraction: Double { min(1, max(0, (total - Double(remaining)) / total)) }
+
+    var body: some View {
+        VStack(spacing: 16) {
+            Text("\(remaining)초")
+                .font(.system(size: 64, weight: .semibold))
+                .monospacedDigit()
+                .foregroundStyle(.white)
+            GeometryReader { geometry in
+                ZStack(alignment: .leading) {
+                    Capsule().fill(Color.main2)
+                    Capsule().fill(Color.main3).frame(width: geometry.size.width * fraction)
+                }
+            }
+            .frame(width: 400, height: 10)
+            .animation(.easeOut(duration: 0.3), value: remaining)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("기준 잡는 중")
+        .accessibilityValue("\(remaining)초 남음")
     }
 }
 

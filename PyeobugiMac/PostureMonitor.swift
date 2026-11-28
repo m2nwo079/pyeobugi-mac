@@ -21,6 +21,8 @@ final class PostureMonitor {
     private static let previewHoldTime: TimeInterval = 0.3
     // Only counts, face presence and outcomes are logged; never pitch, size or coordinates
     private static let log = Logger(subsystem: Bundle.main.bundleIdentifier ?? "PyeobugiMac", category: "calibration")
+    // Reaction timing only: when posture events happen on the FaceCapture clock, never pitch, size or score
+    static let postureLog = Logger(subsystem: Bundle.main.bundleIdentifier ?? "PyeobugiMac", category: "posture")
 
     static var isOnboarded: Bool { UserDefaults.standard.bool(forKey: onboardedKey) }
 
@@ -213,12 +215,24 @@ final class PostureMonitor {
         }
 
         if isDetecting {
+            logReaction(from: engine, to: state, transitions: transitions)
             engine = state
             feedback = updateFeedback(feedback, engine: engine, at: sample.at, calibrated: baseline != nil, transitions: transitions)
         }
         // nil leaves the gate closed until detection or calibration starts
         if let next = nextDetection(engine, at: sample.at, detecting: isDetecting, calibrating: calibrationRun != nil) {
             capture.scheduleNext(at: next)
+        }
+    }
+
+    private func logReaction(from old: EngineState, to new: EngineState, transitions: [Transition]) {
+        let now = FaceCapture.now()
+        // The score crossing the entry line and the candidate start are the same sample
+        if !old.bad, old.pendingSince == nil, !new.bad, let since = new.pendingSince {
+            Self.postureLog.debug("candidate started t=\(since, format: .fixed(precision: 3), privacy: .public) handled=\(now, format: .fixed(precision: 3), privacy: .public)")
+        }
+        for case let .badEnter(at, _) in transitions {
+            Self.postureLog.debug("bad confirmed t=\(now, format: .fixed(precision: 3), privacy: .public) +\(now - at, format: .fixed(precision: 3), privacy: .public)s from candidate")
         }
     }
 

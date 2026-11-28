@@ -29,6 +29,12 @@ struct MenuBarView: View {
         }
         .disabled(monitor.camera == .denied)
         Toggle("거북이 표시", isOn: $overlay.isVisible)
+        Picker("교정 강도", selection: $overlay.sensitivity) {
+            ForEach(Sensitivity.allCases, id: \.self) { level in
+                Text(level.label).tag(level)
+            }
+        }
+        .pickerStyle(.menu)
         Divider()
         Button("종료") {
             NSApplication.shared.terminate(nil)
@@ -46,6 +52,16 @@ struct MenuBarView: View {
             return "기준 잡기 실패. 움직이지 말고 다시 시도해 주세요."
         case .saved:
             return "기준을 저장했습니다."
+        }
+    }
+}
+
+extension Sensitivity {
+    var label: String {
+        switch self {
+        case .loose: "느슨"
+        case .normal: "보통"
+        case .strict: "엄격"
         }
     }
 }
