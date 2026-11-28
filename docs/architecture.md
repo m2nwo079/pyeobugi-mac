@@ -32,6 +32,7 @@ pitch·얼굴 크기·기준값은 `PostureCore`와 앱 안에서만 쓰이고 `
 | 기준 잡기 진행 표시 | 수집 중에는 버튼 대신 남은 초(`CalibrationRun` 판정의 `remainingSeconds`)와 진행 막대를 보여 준다. 움직여서 실패하면 실패 문구와 "다시 시도" 버튼을 보여 주고, 새 시도가 시작되면 실패 표시를 지운다 |
 | 기준 잡기 진단 로그 | `os.Logger` debug, 카테고리 `calibration`. 시작 호출, 샘플 수, 얼굴 유무, 판정 결과와 실패 사유만 남기고 pitch·크기·좌표는 남기지 않는다 |
 | 거북이 오버레이 | `NSPanel` (borderless, nonactivating, 클릭 통과, 모든 Space) + 부위별 Core Animation 레이어(`TurtleView`), 디스플레이 링크로 프레임 수 조절. 동작과 상수는 `docs/overlay.md` |
+| 거북이 잡기·던지기 | 포인터가 거북이 위에 있을 때만 `ignoresMouseEvents`를 끈다 (`TurtlePointer`). 클릭이 통과하는 동안은 마우스 이동 전역 모니터(추가 권한 없음), 받는 동안은 뷰 추적 영역과 마우스 이벤트로 포인터를 얻는다. 받거나 끄는 동안만 도는 디스플레이 링크가 프레임마다 거북이 밖·버튼 떼어짐을 확인해 클릭 통과로 되돌린다. 물리(`TurtleFlight`)는 그리기 디스플레이 링크 프레임마다 한 단계 |
 | 거북이 표시 토글 | 메뉴 `Toggle`, `UserDefaults` 키 `showTurtle` (기본 켜짐) |
 | 교정 강도 | 메뉴 `Picker`(느슨·보통·엄격), `UserDefaults` 키 `sensitivity`(`Sensitivity.rawValue`, 기본 보통). 목이 늘어나기 시작하는 지연만 바꾸고 나쁜 자세 확정 시간은 그대로다 (`docs/detection.md` 펫 표시 상수) |
 | 반응 시간 로그 | `os.Logger` debug, 범주 `posture`. 후보 시작, 확정, 목 요청, 목 늘어남 시작, 회복 시각만 `FaceCapture.now()` 기준으로 남긴다. pitch·크기·점수는 남기지 않는다 (`docs/detection.md` 반응 지연) |
@@ -57,12 +58,15 @@ panel.backgroundColor = .clear
 panel.hasShadow = false
 // Let clicks pass through to the apps underneath
 panel.ignoresMouseEvents = true
+// Mouse moves reach the view while the pointer is over the turtle and events are taken
+panel.acceptsMouseMovedEvents = true
 panel.level = .statusBar
 // Show on every Space and over full-screen apps
 panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
 ```
 
 `visibleFrame`은 메뉴 막대와 Dock을 뺀 영역.
+`ignoresMouseEvents`는 포인터가 거북이 위에 있는 동안만 `false`가 된다 (`docs/overlay.md` 포인터와 클릭 통과).
 
 ## 동시성
 
