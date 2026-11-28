@@ -73,6 +73,9 @@ public func evaluateCalibration(_ samples: [Sample], startedAt: TimeInterval) ->
 // One calibration attempt. Samples are judged as they arrive, and the app also asks for a verdict
 // at the deadline so the attempt ends even when samples stop coming.
 public struct CalibrationRun: Sendable {
+    // How long an attempt collects samples
+    public static let duration = calibrationDuration
+
     public let startedAt: TimeInterval
     public private(set) var samples: [Sample] = []
 
