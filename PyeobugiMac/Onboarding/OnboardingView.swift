@@ -48,7 +48,7 @@ struct OnboardingView: View {
         Group {
             switch step {
             case .intro:
-                IntroView { step = .permission }
+                IntroScreen { step = .permission }
             case .permission:
                 PermissionView(monitor: monitor, onGranted: { step = .calibrate }, onRefused: { step = .intro })
             case .calibrate:
@@ -56,53 +56,6 @@ struct OnboardingView: View {
             }
         }
         .frame(width: 1280, height: 832)
-    }
-}
-
-private struct IntroView: View {
-    let start: () -> Void
-
-    private static let points = [
-        "웹캠으로 자세를 실시간으로 살펴요",
-        "영상은 기기 안에서만 처리돼요",
-        "자세가 무너지면 펴부기가 알려줘요",
-    ]
-
-    var body: some View {
-        ZStack(alignment: .topLeading) {
-            Color.main1
-            VStack(alignment: .leading, spacing: 36) {
-                VStack(alignment: .leading, spacing: 16) {
-                    Text("당신의 자세 건강,\n펴부기가 지켜드릴게요.")
-                        .textStyle(.display)
-                        .foregroundStyle(Color.grey900)
-                    Text("공부하거나 일하는 동안 웹캠으로 앉은 자세를 살피고,\n자세가 구부정해지기 시작하면 펴부기가 알려드려요.")
-                        .textStyle(.body)
-                        .foregroundStyle(Color.grey700)
-                }
-                VStack(alignment: .leading, spacing: 12) {
-                    ForEach(Array(Self.points.enumerated()), id: \.offset) { index, point in
-                        HStack(spacing: 8) {
-                            Text(String(index + 1))
-                                .textStyle(.caption)
-                                .frame(width: 16, height: 16)
-                                .overlay(Circle().strokeBorder(Color.grey900, lineWidth: 1))
-                            Text(point).textStyle(.body)
-                        }
-                    }
-                }
-                .foregroundStyle(Color.grey900)
-                Button("시작하기", action: start)
-                    .buttonStyle(FilledButtonStyle(fill: false))
-            }
-            .padding(.leading, 46)
-            .padding(.top, 93)
-            // The laptop screen of the intro scene, rising from the bottom edge
-            .frame(width: 999, height: 557, alignment: .topLeading)
-            .background(Color.main5, in: UnevenRoundedRectangle(topLeadingRadius: 9, topTrailingRadius: 9))
-            .padding(.leading, 141)
-            .padding(.top, 275)
-        }
     }
 }
 
