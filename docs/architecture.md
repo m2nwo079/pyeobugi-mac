@@ -39,7 +39,7 @@ pitch·얼굴 크기·기준값은 `PostureCore`와 앱 안에서만 쓰이고 `
 | 공부 타이머 | `PostureCore`의 `Pomodoro`를 `StudyTimer`가 1초마다 진행한다. 메뉴 `Toggle`, `UserDefaults` 키 `studyTimer` (기본 꺼짐). 거북이를 꺼 두면 오른쪽 아래 작은 패널(`TimerCorner`)에 남은 시간만 띄운다 |
 | 스트레칭 알림 | 메뉴 `Toggle`, `UserDefaults` 키 `stretchReminder` (기본 켜짐) |
 | Debug 짧은 시간 | Debug 빌드에서 실행 인자 `-fastTimers YES`면 분 단위 시간을 60분의 1로 (`FastTimers`) |
-| 교정 강도 | 메뉴 `Picker`(느슨·보통·엄격), `UserDefaults` 키 `sensitivity`(`Sensitivity.rawValue`, 기본 보통). 목이 늘어나기 시작하는 지연만 바꾸고 나쁜 자세 확정 시간은 그대로다 (`docs/detection.md` 펫 표시 상수) |
+| 교정 강도 | 메뉴 `Picker`(느슨·보통·엄격), `UserDefaults` 키 `sensitivity`(`Sensitivity.rawValue`, 기본 보통). `TurtleOverlay`가 `PostureMonitor.sensitivity`에 넘겨 판정 각도(진입 느슨 15°·보통 10°·엄격 6.5°)를 바꾸고, 목이 늘어나기 시작하는 지연도 바꾼다. 나쁜 자세 확정 시간은 그대로다 (`docs/detection.md` 교정 강도별 판정 각도, 펫 표시 상수) |
 | 반응 시간 로그 | `os.Logger` debug, 범주 `posture`. 후보 시작, 확정, 목 요청, 목 늘어남 시작, 회복 시각만 `FaceCapture.now()` 기준으로 남긴다. pitch·크기·점수는 남기지 않는다 (`docs/detection.md` 반응 지연) |
 | 메뉴 막대 | SwiftUI `MenuBarExtra`, 템플릿 이미지 아이콘. `LSUIElement`로 Dock 아이콘을 숨긴다 |
 | 앱 창 (리포트·설정) | SwiftUI `Window` (예정) |

@@ -63,6 +63,50 @@ private func sizeContribution(atPitch pitch: Double) -> Double {
     }
 }
 
+@Suite struct SensitivityTests {
+    // Score when the head is deg past the stored baseline, scored against the tuned baseline
+    private func tunedScore(_ deg: Double, _ sensitivity: Sensitivity) -> Double {
+        postureScore(pitch: baseline.pitch + deg, size: baseline.size, baseline: tunedBaseline(baseline, sensitivity: sensitivity))
+    }
+
+    @Test func baseEnterPitchIs6_5() {
+        #expect(isClose(baseEnterPitch, 6.5))
+        #expect(Sensitivity.allCases.map(\.enterPitch) == [15, 10, baseEnterPitch])
+    }
+
+    @Test func entryAngleFollowsSensitivity() {
+        for sensitivity in Sensitivity.allCases {
+            let enter = sensitivity.enterPitch
+            #expect(tunedScore(enter - 0.01, sensitivity) < badEnterScore)
+            #expect(tunedScore(enter + 0.01, sensitivity) >= badEnterScore)
+        }
+    }
+
+    @Test func recoveryAngleShiftsWithEntry() {
+        // Unshifted, the score falls below badExitScore under 1.5 + 6 / 1.4 degrees
+        for sensitivity in Sensitivity.allCases {
+            let exit = sensitivity.enterPitch - baseEnterPitch + 1.5 + 6 / 1.4
+            #expect(tunedScore(exit - 0.01, sensitivity) < badExitScore)
+            #expect(tunedScore(exit + 0.01, sensitivity) >= badExitScore)
+        }
+    }
+
+    @Test func stricterIsMoreSensitive() {
+        #expect(tunedScore(12, .loose) < tunedScore(12, .normal))
+        #expect(tunedScore(12, .normal) < tunedScore(12, .strict))
+    }
+
+    @Test func keepsBaselineSize() {
+        for sensitivity in Sensitivity.allCases {
+            #expect(tunedBaseline(baseline, sensitivity: sensitivity).size == baseline.size)
+        }
+    }
+
+    @Test func strictKeepsStoredBaseline() {
+        #expect(tunedBaseline(baseline, sensitivity: .strict) == baseline)
+    }
+}
+
 @Suite struct SeverityTests {
     @Test func mapsScoresToBands() {
         #expect([severity(of: 3), severity(of: 10), severity(of: 18)] == [.mild, .moderate, .severe])

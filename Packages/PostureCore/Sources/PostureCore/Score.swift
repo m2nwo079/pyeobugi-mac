@@ -27,6 +27,15 @@ private let severeMinScore = 18.0
 public let badEnterScore = 3.0
 public let badExitScore = 2.0
 
+// Pitch past the baseline at which the pitch term alone reaches badEnterScore
+public let baseEnterPitch = pitchDeadzone + (badEnterScore + scoreDeadzone) / pitchWeight
+
+// Baseline fed to scoring for a sensitivity. Only the pitch moves, so the whole pitch curve
+// (entry, recovery, size gate, severity) shifts together; the stored baseline and its size stay as they are
+public func tunedBaseline(_ baseline: Baseline, sensitivity: Sensitivity) -> Baseline {
+    Baseline(pitch: baseline.pitch + sensitivity.enterPitch - baseEnterPitch, size: baseline.size)
+}
+
 public func postureScore(pitch: Double, size: Double, baseline: Baseline) -> Double {
     let dPitch = pitch - baseline.pitch
     let pitchTerm = dPitch > pitchDeadzone ? (dPitch - pitchDeadzone) * pitchWeight : 0
