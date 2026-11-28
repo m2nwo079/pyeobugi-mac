@@ -5,13 +5,23 @@ public enum PetMood: Sendable, Equatable {
     case away, bad, good
 }
 
-// How quickly on-screen correction kicks in. Raw values are stable for persistence
+// How far the head must drop before posture counts as bad, and how quickly on-screen correction kicks in.
+// Raw values are stable for persistence
 public enum Sensitivity: Int, Sendable, Equatable, CaseIterable {
     case loose = 0
     case normal = 1
     case strict = 2
 
     public static let `default`: Sensitivity = .normal
+
+    // Pitch past the stored baseline at which the score reaches the entry line (see tunedBaseline)
+    public var enterPitch: Double {
+        switch self {
+        case .loose: 15
+        case .normal: 10
+        case .strict: baseEnterPitch
+        }
+    }
 
     // Wait after the score crosses the entry line before the neck starts growing.
     // Only the on-screen feedback is brought forward; bad-posture confirmation stays at Timing.enterAfter
