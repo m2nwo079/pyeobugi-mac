@@ -4,7 +4,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "PostureCore",
+    name: "PyeobugiAPI",
     platforms: [.macOS(.v14)],
     products: [
         // Products define the executables and libraries a package produces, making them visible to other packages.
@@ -25,6 +25,9 @@ let package = Package(
         .testTarget(
             name: "PyeobugiAPITests",
             dependencies: ["PyeobugiAPI"],
+            resources: [
+                .copy("Fixtures"),
+            ],
             swiftSettings: [
                 .enableUpcomingFeature("ApproachableConcurrency"),
             ],
