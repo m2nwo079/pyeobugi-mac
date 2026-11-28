@@ -24,6 +24,7 @@ private final class HeadHost: NSHostingView<HeadView> {
 final class TurtleBubbles {
     private let monitor: PostureMonitor
     private let timer: StudyTimer
+    private let recorder: EventRecorder
     private var picker = BubblePicker(cooldowns: BubbleTiming.cooldowns.mapValues { $0 * FastTimers.scale })
     private var detecting = false
     private var stretchAt: TimeInterval = 0
@@ -35,9 +36,10 @@ final class TurtleBubbles {
     private weak var view: TurtleView?
     private weak var pointer: TurtlePointer?
 
-    init(monitor: PostureMonitor, timer: StudyTimer) {
+    init(monitor: PostureMonitor, timer: StudyTimer, recorder: EventRecorder) {
         self.monitor = monitor
         self.timer = timer
+        self.recorder = recorder
     }
 
     func attach(container: NSView, view: TurtleView, pointer: TurtlePointer) {
@@ -100,6 +102,7 @@ final class TurtleBubbles {
     private func show(_ next: HeadContent?) {
         guard next != content else { return }
         content = next
+        if case .bubble(let kind) = next { recorder.bubbleShown(kind) }
         guard let next, let container, let view else {
             host?.removeFromSuperview()
             host = nil

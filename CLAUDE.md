@@ -44,14 +44,14 @@ PyeobugiMac/            app target: SwiftUI, menu bar, windows
   Overlay/              NSPanel turtle overlay
 Packages/
   PostureCore/          posture scoring, engine, calibration, distance, bubbles, pomodoro
-  PyeobugiAPI/          Codable events, device registration, event queue
+  PyeobugiAPI/          Codable events, KST time, usage segments, event store
 Config/                 Debug/Release xcconfig (API_BASE_URL)
 docs/                   design notes and decisions
 ```
 
 ## 빌드와 실행
 
-- Xcode에서 `PyeobugiMac` 스킴 실행. 로직 테스트는 `cd Packages/PostureCore && swift test`.
+- Xcode에서 `PyeobugiMac` 스킴 실행. 로직 테스트는 `cd Packages/PostureCore && swift test`, `cd Packages/PyeobugiAPI && swift test`.
 - Debug는 `http://localhost:8080/api`(로컬 서버), Release는 운영 서버를 쓴다 (`Config/*.xcconfig`).
 - 로컬 서버 실행 방법과 초기 세팅은 `docs/setup.md` 참고.
 
@@ -64,4 +64,5 @@ docs/                   design notes and decisions
 - `docs/intro.md`: 온보딩 시작 화면 단계, 시간·이징·확률 상수, 부분별 그리는 방법
 - `docs/app-window.md`: 메인 창(사이드바, 리포트, 설정) 레이아웃·크기·글꼴 상수와 창을 여는 계기
 - `docs/backend-integration.md`: API, 이벤트 종류, 인코딩 규칙
+- `docs/events.md`: 로컬 이벤트 기록 시점, 사용 구간, 저장 형식·위치, 보관·상한, 비정상 종료·잠자기 처리
 - `docs/roadmap.md`: 작업 순서와 미결정 사항

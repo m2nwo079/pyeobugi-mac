@@ -18,6 +18,7 @@ final class TurtleOverlay {
         didSet {
             UserDefaults.standard.set(isVisible, forKey: Self.visibleKey)
             apply()
+            recordSettings()
         }
     }
 
@@ -36,11 +37,15 @@ final class TurtleOverlay {
             UserDefaults.standard.set(studyTimerOn, forKey: Self.studyTimerKey)
             timer.setRunning(studyTimerOn)
             apply()
+            recordSettings()
         }
     }
 
     var stretchReminder: Bool {
-        didSet { UserDefaults.standard.set(stretchReminder, forKey: Self.stretchReminderKey) }
+        didSet {
+            UserDefaults.standard.set(stretchReminder, forKey: Self.stretchReminderKey)
+            recordSettings()
+        }
     }
 
     // Whether both panels also appear on another app's full-screen Space; applied to open panels right away
@@ -57,6 +62,7 @@ final class TurtleOverlay {
     @ObservationIgnored private let bubbles: TurtleBubbles
     @ObservationIgnored private let corner: TimerCorner
     @ObservationIgnored private let recalibrate: () -> Void
+    @ObservationIgnored private let recorder: EventRecorder
     @ObservationIgnored private var panel: NSPanel?
     @ObservationIgnored private var model: TurtleModel?
     @ObservationIgnored private var view: TurtleView?
@@ -66,12 +72,13 @@ final class TurtleOverlay {
     // Whether "neck requested" was logged for the current candidate
     @ObservationIgnored private var neckLogged = false
 
-    init(monitor: PostureMonitor, recalibrate: @escaping () -> Void) {
+    init(monitor: PostureMonitor, recorder: EventRecorder, recalibrate: @escaping () -> Void) {
         self.monitor = monitor
+        self.recorder = recorder
         self.recalibrate = recalibrate
-        let timer = StudyTimer()
+        let timer = StudyTimer(recorder: recorder)
         self.timer = timer
-        bubbles = TurtleBubbles(monitor: monitor, timer: timer)
+        bubbles = TurtleBubbles(monitor: monitor, timer: timer, recorder: recorder)
         corner = TimerCorner(timer: timer)
         let defaults = UserDefaults.standard
         // bool(forKey:) also reads launch arguments such as `-showTurtle NO`, which arrive as strings
@@ -85,6 +92,7 @@ final class TurtleOverlay {
         monitor.sensitivity = sensitivity
         corner.overFullScreen = overFullScreen
         timer.setRunning(studyTimerOn)
+        recorder.settingsLoaded(studyTimer: studyTimerOn, stretch: stretchReminder, overlay: isVisible)
         // The first saved baseline ends onboarding, so the overlay may appear now
         monitor.onBaselineSaved = { [weak self] in self?.apply() }
         let center = NotificationCenter.default
@@ -99,6 +107,11 @@ final class TurtleOverlay {
                 self?.corner.fitScreen()
             }
         }
+    }
+
+    // Only the on/off switches the server knows; sensitivity and full-screen display are not sent
+    private func recordSettings() {
+        recorder.settingsChanged(studyTimer: studyTimerOn, stretch: stretchReminder, overlay: isVisible)
     }
 
     // The single place that decides what the overlay shows.

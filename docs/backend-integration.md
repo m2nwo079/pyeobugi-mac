@@ -27,8 +27,11 @@
 | `BUBBLE_SHOWN` | `bubbleType`: `POSTURE` / `STRETCH` / `TIMER_BREAK` / `ENCOURAGE` / `GREETING` |
 | `SETTINGS_CHANGED` | `studyTimer`, `stretch`, `awayPause`, `overlay`: Bool |
 
-`USAGE_SEGMENT` 규칙: `badDurationSec ≤ durationSec`, `mildDurationSec ≤ badDurationSec`, `startedAt < endedAt`, 시작과 끝이 같은 KST 날짜.
+`USAGE_SEGMENT` 규칙: `badDurationSec ≤ durationSec`, `mildDurationSec ≤ badDurationSec`, `startedAt < endedAt`,
+시작과 끝이 같은 KST 날짜(다음 날 `00:00:00`에 끝나는 것은 허용), `durationSec`와 `endedAt - startedAt`의 차이 1초 이하, `occurredAt == endedAt`.
 세부 규칙은 서버 검증을 기준으로 한다.
+
+이벤트를 만드는 시점, 사용 구간 규칙, 기기 안 저장은 `docs/events.md`.
 
 ## 인코딩 주의 사항
 
