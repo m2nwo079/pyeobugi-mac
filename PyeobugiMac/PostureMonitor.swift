@@ -33,6 +33,8 @@ final class PostureMonitor {
     private(set) var feedback = PostureFeedback.initial
     private(set) var calibration = CalibrationStatus.idle
     private(set) var baseline: Baseline?
+    // Sitting distance compared with the baseline; read by polling, so not observed
+    @ObservationIgnored private(set) var distance = DistanceState.initial
 
     @ObservationIgnored private var engine = EngineState.initial
     @ObservationIgnored private var calibrationRun: CalibrationRun?
@@ -82,6 +84,7 @@ final class PostureMonitor {
     func stop() {
         isDetecting = false
         engine = .initial
+        distance = .initial
         feedback = updateFeedback(feedback, engine: engine, at: FaceCapture.now(), calibrated: baseline != nil, transitions: [])
         closeCameraIfUnused()
     }
@@ -217,6 +220,7 @@ final class PostureMonitor {
         if isDetecting {
             logReaction(from: engine, to: state, transitions: transitions)
             engine = state
+            distance = stepDistance(distance, at: sample.at, size: sample.face?.size, baseline: baseline)
             feedback = updateFeedback(feedback, engine: engine, at: sample.at, calibrated: baseline != nil, transitions: transitions)
         }
         // nil leaves the gate closed until detection or calibration starts
