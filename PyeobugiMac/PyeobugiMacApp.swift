@@ -31,6 +31,12 @@ struct PyeobugiMacApp: App {
         // Runs once the app has finished launching
         if PostureMonitor.isOnboarded {
             Task { main.show(.report) }
+            // `-startDetection YES` starts detection at launch, for measuring with detection on.
+            // Read from the arguments only, so nothing is written to UserDefaults
+            let arguments = ProcessInfo.processInfo.arguments
+            if let flag = arguments.firstIndex(of: "-startDetection"), arguments.dropFirst(flag + 1).first == "YES" {
+                Task { await monitor.start() }
+            }
         } else {
             Task { onboarding.show(calibrationOnly: false) }
         }
