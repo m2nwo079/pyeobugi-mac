@@ -29,6 +29,7 @@ struct MenuBarView: View {
         }
         .disabled(monitor.camera == .denied)
         Toggle("거북이 표시", isOn: $overlay.isVisible)
+        Toggle("전체 화면에서도 표시", isOn: $overlay.overFullScreen)
         Toggle("공부 타이머", isOn: $overlay.studyTimerOn)
         Toggle("스트레칭 알림", isOn: $overlay.stretchReminder)
         Picker("교정 강도", selection: $overlay.sensitivity) {

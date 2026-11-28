@@ -37,6 +37,8 @@ final class PostureMonitor {
     @ObservationIgnored private(set) var distance = DistanceState.initial
     // Moves the entry angle; applied from the next sample without resetting the engine
     @ObservationIgnored var sensitivity = Sensitivity.default
+    // Called after a baseline is saved and onboarding is marked complete
+    @ObservationIgnored var onBaselineSaved: (() -> Void)?
 
     @ObservationIgnored private var engine = EngineState.initial
     @ObservationIgnored private var calibrationRun: CalibrationRun?
@@ -179,6 +181,7 @@ final class PostureMonitor {
             UserDefaults.standard.set([newBaseline.pitch, newBaseline.size], forKey: Self.baselineKey)
             UserDefaults.standard.set(true, forKey: Self.onboardedKey)
             finishCalibration(.saved)
+            onBaselineSaved?()
         }
     }
 
