@@ -42,7 +42,7 @@ PyeobugiMac/            app target: SwiftUI, menu bar, windows
   Capture/              AVCaptureSession + Vision (pitch, face size)
   Overlay/              NSPanel turtle overlay
 Packages/
-  PostureCore/          posture scoring, engine, calibration, distance
+  PostureCore/          posture scoring, engine, calibration, distance, bubbles, pomodoro
   PyeobugiAPI/          Codable events, device registration, event queue
 Config/                 Debug/Release xcconfig (API_BASE_URL)
 docs/                   design notes and decisions
