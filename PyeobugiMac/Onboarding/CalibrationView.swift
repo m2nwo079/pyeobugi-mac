@@ -31,7 +31,7 @@ struct CalibrationView: View {
             }
             if done {
                 ModalDialog(title: "기준 저장 완료",
-                            message: "이제 이 자세를 기준으로 살펴볼게요.\n기준은 메뉴 막대에서 언제든 다시 잡을 수 있어요.",
+                            message: "이제 이 자세를 기준으로 살펴볼게요.\n기준은 설정에서 언제든 다시 잡을 수 있어요.",
                             confirm: "시작하기",
                             onConfirm: close)
             }
@@ -83,7 +83,7 @@ private struct CalibrationProgress: View {
     var body: some View {
         VStack(spacing: 16) {
             Text("\(remaining)초")
-                .font(.system(size: 64, weight: .semibold))
+                .font(.custom("Pretendard-SemiBold", fixedSize: 64))
                 .monospacedDigit()
                 .foregroundStyle(.white)
             GeometryReader { geometry in

@@ -33,6 +33,9 @@ final class PostureMonitor {
     private(set) var feedback = PostureFeedback.initial
     private(set) var calibration = CalibrationStatus.idle
     private(set) var baseline: Baseline?
+    // Detection time for the sidebar timer, in memory only: pausing keeps it, ending resets it
+    private(set) var detectingSince: Date?
+    private(set) var detectedBefore: TimeInterval = 0
     // Sitting distance compared with the baseline; read by polling, so not observed
     @ObservationIgnored private(set) var distance = DistanceState.initial
     // Moves the entry angle; applied from the next sample without resetting the engine
@@ -82,10 +85,23 @@ final class PostureMonitor {
         await openCameraDevice()
         guard camera == .running else { return }
         isDetecting = true
+        detectingSince = .now
         capture.scheduleNext(at: FaceCapture.now())
     }
 
+    func elapsed(at now: Date) -> TimeInterval {
+        detectedBefore + (detectingSince.map { now.timeIntervalSince($0) } ?? 0)
+    }
+
+    // Stops detection and clears the sidebar timer
+    func end() {
+        if isDetecting { stop() }
+        detectedBefore = 0
+    }
+
     func stop() {
+        detectedBefore = elapsed(at: .now)
+        detectingSince = nil
         isDetecting = false
         engine = .initial
         distance = .initial
