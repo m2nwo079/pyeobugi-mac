@@ -35,6 +35,8 @@ final class PostureMonitor {
     private(set) var baseline: Baseline?
     // Sitting distance compared with the baseline; read by polling, so not observed
     @ObservationIgnored private(set) var distance = DistanceState.initial
+    // Moves the entry angle; applied from the next sample without resetting the engine
+    @ObservationIgnored var sensitivity = Sensitivity.default
 
     @ObservationIgnored private var engine = EngineState.initial
     @ObservationIgnored private var calibrationRun: CalibrationRun?
@@ -203,7 +205,9 @@ final class PostureMonitor {
 
     private func ingest(_ sample: Sample) {
         guard camera == .running else { return }
-        var (state, transitions) = isDetecting ? stepEngine(engine, sample: sample, baseline: baseline) : (state: engine, transitions: [])
+        // Only scoring sees the tuned baseline; distance and storage keep the calibrated one
+        let scored = baseline.map { tunedBaseline($0, sensitivity: sensitivity) }
+        var (state, transitions) = isDetecting ? stepEngine(engine, sample: sample, baseline: scored) : (state: engine, transitions: [])
 
         if var run = calibrationRun {
             let verdict = run.add(sample)

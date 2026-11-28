@@ -20,9 +20,13 @@ final class TurtleOverlay {
         }
     }
 
-    // How soon the neck starts growing; stored as Sensitivity.rawValue
+    // How far the head must drop for bad posture (passed to the monitor) and how soon the neck starts growing.
+    // Stored as Sensitivity.rawValue
     var sensitivity: Sensitivity {
-        didSet { UserDefaults.standard.set(sensitivity.rawValue, forKey: Self.sensitivityKey) }
+        didSet {
+            UserDefaults.standard.set(sensitivity.rawValue, forKey: Self.sensitivityKey)
+            monitor.sensitivity = sensitivity
+        }
     }
 
     // Runs regardless of detection, since it times study rather than posture
@@ -66,6 +70,8 @@ final class TurtleOverlay {
         sensitivity = (defaults.object(forKey: Self.sensitivityKey) as? Int).flatMap(Sensitivity.init(rawValue:)) ?? .default
         studyTimerOn = defaults.bool(forKey: Self.studyTimerKey)
         stretchReminder = defaults.bool(forKey: Self.stretchReminderKey)
+        // didSet does not run during init
+        monitor.sensitivity = sensitivity
         timer.setRunning(studyTimerOn)
         let center = NotificationCenter.default
         // Windows are created once the app has finished launching
