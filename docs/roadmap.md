@@ -15,15 +15,22 @@
    - 완료: 기준 잡기 중 카메라 미리보기와 얼굴 영역·눈·코·입 표시
    - 완료: 시작 화면 애니메이션 (로딩 → 노트북 등장 → 거북이 대기 → 확대·남색 덮기, `docs/intro.md`)
 6. **거북이 오버레이**
-7. **`PyeobugiAPI`**: 기기 등록, 이벤트 큐, 전송 (로컬 서버로 확인)
-   - 할 일: 말풍선이 뜰 때 `BUBBLE_SHOWN`, 집중을 끝낼 때 `POMODORO_COMPLETED` 적재 (`docs/backend-integration.md`).
-     거리 말풍선은 전용 `bubbleType`이 없어 `POSTURE`로 셀지 정해야 한다. 집중 완료는 `Pomodoro.tick`의 `focusCompleted`로 알 수 있다
-8. **리포트 화면**: `GET /api/reports/summary`, Swift Charts
-9. **뽀모도로, 말풍선, 스트레칭 알림, 로그인 시 실행**
+7. **뽀모도로, 말풍선, 스트레칭 알림, 로그인 시 실행**
    - 완료: 말풍선 6종과 고르기, 공부 타이머(집중 25분·휴식 5분), 스트레칭 알림, 거리 말풍선을 누르면 기준 잡기 (`docs/overlay.md`)
-   - 남음: 로그인 시 실행
-   - 다음 작업 "장시간 부재 시 카메라 끄기"에서 함께: 자리를 오래 비우면 감지와 카메라를 끄는 설정 토글 (`docs/detection.md`의 장시간 부재)
-10. **배포**: 서명, 공증, dmg, CI(GitHub Actions macOS 러너)
+   - 남음: 로그인 시 실행 (로그인으로 실행될 때 메인 창을 띄울지 함께 정한다. 띄우지 않으면 실행 직후 `.regular`라 Dock 아이콘이 남으므로 `.accessory`로 바꿔야 한다)
+8. **메인 창과 설정**
+   - 완료: 1280×832 메인 창, 사이드바(화면 전환, 감지 시작·일시정지·종료, 접기), 설정 화면, 리포트 빈 상태,
+     온보딩 완료·실행·재실행·메뉴에서 창 열기, 메뉴 정리 (`docs/app-window.md`)
+9. **로컬 이벤트 저장소**: 자세 상태 변화, 말풍선, 집중 완료 같은 이벤트를 기기 안에 저장한다.
+   서버로 바꿀 때 기록 코드를 다시 짜지 않도록 이벤트 형식은 `docs/backend-integration.md`의 이벤트를 따른다
+10. **로컬 리포트**: 저장한 이벤트로 리포트를 계산해 화면에 넘긴다. `ReportState`에 데이터 상태를 더하고, 날짜 선택과 Swift Charts 차트를 만든다
+11. **자리비움**: 자리를 오래 비우면 감지와 카메라를 끈다 (`docs/detection.md`의 장시간 부재)
+    - 설정 화면 토글 "자리비움 시 카메라 꺼짐", 감지를 멈췄다는 알림
+    - 감지 쪽 설정이 생기므로 설정 상태를 `TurtleOverlay`에서 별도 객체로 떼어 낸다
+12. **서버 연동 (`PyeobugiAPI`)**: 기기 등록, 이벤트 큐 전송 (로컬 서버로 확인), 리포트 조회를 서버로 바꾼다 (오류 상태 사용)
+    - 할 일: 말풍선이 뜰 때 `BUBBLE_SHOWN`, 집중을 끝낼 때 `POMODORO_COMPLETED` 적재 (`docs/backend-integration.md`).
+      거리 말풍선은 전용 `bubbleType`이 없어 `POSTURE`로 셀지 정해야 한다. 집중 완료는 `Pomodoro.tick`의 `focusCompleted`로 알 수 있다
+13. **배포**: 서명, 공증, dmg, CI(GitHub Actions macOS 러너)
 
 ## 미결정 사항
 
@@ -31,7 +38,7 @@
 | --- | --- | --- |
 | 최소 macOS | 13 / 14 / 15 | `MenuBarExtra`·Swift Charts 13+, SwiftData·`@Observable` 14+. |
 | Bundle ID | `com.pyeobugi.PyeobugiMac` 등 | |
-| Dock 아이콘 | 표시 / 숨김(메뉴 막대 전용) | 숨김으로 정함 (`LSUIElement`). Cmd+Tab 목록에서 빠짐 |
+| Dock 아이콘 | 표시 / 숨김(메뉴 막대 전용) | 창(메인, 온보딩·기준 잡기)이 열려 있는 동안만 표시하고, 닫으면 메뉴 막대 전용으로 정함. 앱 아이콘 이미지는 아직 없어 기본 아이콘이 보임 |
 | 배포 채널 | Developer ID 직접 배포 / Mac App Store | 둘 다 Apple Developer Program(유료) 필요. App Store는 샌드박스 필수 |
 | 서명 | Developer ID / ad-hoc | ad-hoc은 빌드마다 카메라 권한을 다시 요청할 수 있음 |
 
@@ -40,4 +47,5 @@
 - Vision pitch의 잡음 수준과 범위가 기존 임계값에 맞는지 (2번에서 확인)
 - App Nap이 백그라운드 감지 주기에 영향을 주는지
 - 다른 앱(화상회의 등)과 카메라 동시 사용 시 동작
+- Finder 재실행과 Dock 아이콘 클릭으로 창이 앞으로 오는지 (`open` 명령의 재실행으로는 확인함), Xcode의 Run으로 실행할 때 창이 맨 앞에 뜨는지 (실행 파일 직접 실행으로는 확인함), 마지막 창을 닫거나 Dock으로 내렸을 때의 Dock 아이콘
 - 기준 잡기 미리보기에서 얼굴 표시가 거울 모드 영상과 맞게 겹치는지, `.medium` 화질이 창 전체에서 충분한지
